@@ -85,6 +85,60 @@ final class GlassDemoViewController: UIViewController {
         text.textAlignment = .center
         effect.contentView.addSubview(text)
         dark.addSubview(effect)
+
+        // React Native-like hierarchy proof: a native material is inserted
+        // behind the target content rather than over a complete app window.
+        // The solid sibling demonstrates why transparent host backgrounds matter.
+        let dock = UIView()
+        dock.translatesAutoresizingMaskIntoConstraints = false
+        dock.backgroundColor = .clear
+        view.addSubview(dock)
+        NSLayoutConstraint.activate([
+            dock.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            dock.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            dock.widthAnchor.constraint(equalToConstant: 330),
+            dock.heightAnchor.constraint(equalToConstant: 78)
+        ])
+
+        let dockMaterial = DeferredGlassView(effect: nil)
+        dockMaterial.pendingGlass = UIGlassEffect(style: .regular)
+        dockMaterial.cornerConfiguration = .capsule()
+        dockMaterial.translatesAutoresizingMaskIntoConstraints = false
+        dockMaterial.isUserInteractionEnabled = false
+        dock.insertSubview(dockMaterial, at: 0)
+        NSLayoutConstraint.activate([
+            dockMaterial.topAnchor.constraint(equalTo: dock.topAnchor),
+            dockMaterial.leadingAnchor.constraint(equalTo: dock.leadingAnchor),
+            dockMaterial.trailingAnchor.constraint(equalTo: dock.trailingAnchor),
+            dockMaterial.bottomAnchor.constraint(equalTo: dock.bottomAnchor)
+        ])
+
+        let dockContent = UILabel()
+        dockContent.text = "Discord-like native glass dock"
+        dockContent.textColor = .label
+        dockContent.font = .systemFont(ofSize: 15, weight: .semibold)
+        dockContent.textAlignment = .center
+        dockContent.translatesAutoresizingMaskIntoConstraints = false
+        dock.addSubview(dockContent)
+        NSLayoutConstraint.activate([
+            dockContent.centerXAnchor.constraint(equalTo: dock.centerXAnchor),
+            dockContent.centerYAnchor.constraint(equalTo: dock.centerYAnchor)
+        ])
+
+        let opaqueComparison = UILabel()
+        opaqueComparison.text = "Opaque sibling (glass hidden)"
+        opaqueComparison.backgroundColor = UIColor(red: 0.13, green: 0.15, blue: 0.19, alpha: 1)
+        opaqueComparison.textColor = .white
+        opaqueComparison.font = .systemFont(ofSize: 12)
+        opaqueComparison.textAlignment = .center
+        opaqueComparison.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(opaqueComparison)
+        NSLayoutConstraint.activate([
+            opaqueComparison.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            opaqueComparison.bottomAnchor.constraint(equalTo: dock.topAnchor, constant: -10),
+            opaqueComparison.widthAnchor.constraint(equalToConstant: 290),
+            opaqueComparison.heightAnchor.constraint(equalToConstant: 26)
+        ])
     }
 
     override func viewDidLayoutSubviews() {
