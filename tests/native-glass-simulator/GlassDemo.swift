@@ -1,5 +1,9 @@
 import UIKit
 
+@_silgen_name("UnboundSimulatorAttachMarkedGlass")
+private func attachMarkedGlass(_ identifier: UnsafePointer<CChar>) -> Int32
+@_silgen_name("UnboundSimulatorDetachMarkedGlass")
+private func detachMarkedGlass(_ identifier: UnsafePointer<CChar>)
 @_silgen_name("UnboundSimulatorAttachGlass")
 private func attachActualGlass(_ host: UnsafeMutableRawPointer, _ clear: Int32, _ overrideBackground: Int32) -> Int32
 @_silgen_name("UnboundSimulatorDetachGlass")
@@ -274,6 +278,7 @@ final class ActualHostProofController: UIViewController {
         target.translatesAutoresizingMaskIntoConstraints = false
         target.backgroundColor = UIColor(red: 0.11, green: 0.14, blue: 0.20, alpha: 1)
         target.isOpaque = true
+        target.accessibilityIdentifier = "unbound.glass.youbar.background"
         view.addSubview(target)
         NSLayoutConstraint.activate([
             target.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -301,7 +306,7 @@ final class ActualHostProofController: UIViewController {
             return
         }
         let pointer = Unmanaged.passUnretained(target).toOpaque()
-        let attached = attachActualGlass(pointer, 0, 1) != 0
+        let attached = "unbound.glass.youbar.background".withCString { attachMarkedGlass($0) != 0 }
         let confirmed = isActualGlassAttached(pointer) != 0
         status.text = attached && confirmed ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
         // Fail test if a native material cannot be attached to a *known* view.
