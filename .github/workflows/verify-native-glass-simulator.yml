@@ -21,6 +21,13 @@ jobs:
         run: |
           xcodebuild -version
           xcrun simctl list devices available
+      - name: Verify actual Objective-C glass API declarations
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
+          find "$SDK/System/Library/Frameworks/UIKit.framework/Headers" -iname '*Glass*' -print
+          grep -R -n -A 15 -B 5 '@interface UIGlassEffect\|UIGlassEffectStyleClear\|effectWithStyle\|initWithStyle' "$SDK/System/Library/Frameworks/UIKit.framework/Headers" | head -110 || true
       - name: Build isolated UIKit application
         shell: bash
         run: |
