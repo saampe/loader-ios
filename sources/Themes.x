@@ -235,6 +235,17 @@ static BOOL                                        customThemeActive = NO;
         [Themes swizzleSemanticColors];
         semanticColorsSwizzled = YES;
     }
+
+    // The JS theme manager persists the selected theme under themes.applied.
+    // Restore that selection at native startup so the UIColor hooks actually
+    // use the chosen palette on the next app launch.
+    id applied = [Settings getString:@"themes" key:@"applied" def:nil];
+    if ([applied isKindOfClass:[NSString class]] &&
+        [applied length] > 0 &&
+        [Themes isValidCustomTheme:applied])
+    {
+        [Themes setTheme:applied];
+    }
 };
 
 + (void)swizzleRawColors:(NSDictionary *)payload
