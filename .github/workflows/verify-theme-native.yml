@@ -7,6 +7,7 @@ on:
       - 'sources/DevOverlay.m'
       - 'sources/NativeGlassProbe.m'
       - 'sources/NativeGlassHost.m'
+      - 'sources/NativeTabsGlass.x'
       - 'sources/NativePluginBridge.mm'
       - 'headers/NativeGlassHost.h'
       - 'headers/Themes.h'
