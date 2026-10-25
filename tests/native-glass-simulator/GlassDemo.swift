@@ -17,7 +17,9 @@ final class GlassDemo: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let window = UIWindow(frame: UIScreen.main.bounds)
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: UIScreen.main.bounds)
+        window.frame = scene?.coordinateSpace.bounds ?? UIScreen.main.bounds
         let args = ProcessInfo.processInfo.arguments
         let controller: UIViewController = args.contains("--actual-host") ? ActualHostProofController() :
             (args.contains("--tabs") ? NativeTabsProofController() : GlassDemoViewController())
@@ -310,6 +312,7 @@ final class ActualHostProofController: UIViewController {
         let confirmed = isActualGlassAttached(pointer) != 0
         status.text = attached && confirmed ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
         // Fail test if a native material cannot be attached to a *known* view.
-        precondition(attached && confirmed, "Exact NativeGlassHost.m integration failed")
+        NSLog("[GlassHostSimulator] exact marker attach=%d confirmed=%d window=%@ scene=%@", attached ? 1 : 0, confirmed ? 1 : 0, String(describing: target.window), String(describing: target.window?.windowScene))
+        precondition(attached && confirmed, "Exact NativeGlassHost.m marker integration failed")
     }
 }
