@@ -1,16 +1,11 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import "NativeGlassHost.h"
 
 // Native Liquid Glass background for a *known* native host view. This class does
 // not search Discord's hierarchy or modify unrelated React Native surfaces.
 // Attaching to an opaque host is intentionally rejected: it would conceal the
 // material behind its own background and falsely suggest that glass was enabled.
-@interface NativeGlassHost : NSObject
-+ (BOOL)attachToTransparentHost:(UIView *)host clearStyle:(BOOL)clearStyle;
-+ (void)detachFromHost:(UIView *)host;
-+ (BOOL)isAttachedToHost:(UIView *)host;
-@end
-
 @interface UnboundGlassMaterialView : UIVisualEffectView
 @property (nonatomic, strong) UIVisualEffect *deferredEffect;
 @end
