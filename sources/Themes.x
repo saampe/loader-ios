@@ -16,6 +16,7 @@ static NSString                                   *lastDiscordThemeId = nil;
 static BOOL                                        semanticColorsSwizzled = NO;
 static BOOL                                        refreshingDiscordTheme = NO;
 static BOOL                                        customThemeActive = NO;
+static BOOL                                        observingThemeSettings = NO;
 
 + (NSString *)makeJSON
 {
@@ -281,6 +282,44 @@ static BOOL                                        customThemeActive = NO;
     return [Themes getThemes];
 }
 
++ (void)syncThemeFromSettings
+{
+    id saved = [Settings getString:@"themes" key:@"applied" def:nil];
+    NSString *selected = [saved isKindOfClass:[NSString class]] && [saved length] > 0 ? saved : nil;
+
+    if (selected && ![Themes isValidCustomTheme:selected])
+    {
+        [Logger error:LOG_CATEGORY_THEMES
+               format:@"Selected theme %@ is not loaded; leaving current theme unchanged.", selected];
+        [Themes writeDiagnosticReport];
+        return;
+    }
+
+    if (selected && customThemeActive && [currentThemeId isEqualToString:selected])
+    {
+        [Themes writeDiagnosticReport];
+        return;
+    }
+
+    if (!selected && !customThemeActive)
+    {
+        [Themes writeDiagnosticReport];
+        return;
+    }
+
+    [Logger info:LOG_CATEGORY_THEMES
+          format:@"Settings synchronization: requested=%@ current=%@",
+                 selected ?: @"default", currentThemeId ?: @"default"];
+    [Themes setTheme:selected];
+    [Themes writeDiagnosticReport];
+}
+
++ (void)themeSettingsDidChange:(NSNotification *)notification
+{
+    // File monitor callbacks are asynchronous. Apply hooks only on the main thread.
+    dispatch_async(dispatch_get_main_queue(), ^{ [Themes syncThemeFromSettings]; });
+}
+
 + (void)init
 {
     if (!themes)
@@ -301,18 +340,18 @@ static BOOL                                        customThemeActive = NO;
         semanticColorsSwizzled = YES;
     }
 
-    // The JS theme manager persists the selected theme under themes.applied.
-    // Restore that selection at native startup so the UIColor hooks actually
-    // use the chosen palette on the next app launch.
-    id applied = [Settings getString:@"themes" key:@"applied" def:nil];
-    if ([applied isKindOfClass:[NSString class]] &&
-        [applied length] > 0 &&
-        [Themes isValidCustomTheme:applied])
+    // JS saves themes.applied to settings.json. Native settings monitoring
+    // detects subsequent changes, including edits through the developer overlay.
+    if (!observingThemeSettings)
     {
-        [Themes setTheme:applied];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(themeSettingsDidChange:)
+                                                     name:SettingsDidChangeNotification
+                                                   object:nil];
+        observingThemeSettings = YES;
     }
 
-    [Themes writeDiagnosticReport];
+    [Themes syncThemeFromSettings];
 };
 
 + (void)swizzleRawColors:(NSDictionary *)payload
