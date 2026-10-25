@@ -13,10 +13,10 @@ static char kUnboundTabsPreviousScroll;
 
 static BOOL UnboundTabsGlassEnabled(void)
 {
-    // Feature defaults to enabled for confirmed RNSTabBarController instances
-    // only. Users can disable via developer settings without a new IPA.
+    // Experimental until the actual target and renderer are verified.
+    // Fail closed by default; the developer menu can enable it.
     id saved = [[NSUserDefaults standardUserDefaults] objectForKey:@"UnboundNativeTabsGlassEnabled"];
-    return saved ? [saved boolValue] : YES;
+    return saved ? [saved boolValue] : NO;
 }
 
 static void UnboundRestoreTabAppearance(UITabBar *bar)
