@@ -5,6 +5,8 @@ NS_ASSUME_NONNULL_BEGIN
 // transparent host view; no class-name guessing or screen-coordinate placement.
 @interface NativeGlassHost : NSObject
 + (BOOL)attachToTransparentHost:(UIView *)host clearStyle:(BOOL)clearStyle;
++ (BOOL)attachToHost:(UIView *)host clearStyle:(BOOL)clearStyle
+ allowBackgroundOverride:(BOOL)allowBackgroundOverride;
 + (void)detachFromHost:(UIView *)host;
 + (BOOL)isAttachedToHost:(UIView *)host;
 @end
