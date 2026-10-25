@@ -1,0 +1,60 @@
+name: Native Liquid Glass Simulator Proof
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tests/native-glass-simulator/**'
+      - '.github/workflows/verify-native-glass-simulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-proof:
+    name: Render true UIKit glass in simulator (no Discord IPA)
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Xcode and simulators
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available
+      - name: Build isolated UIKit application
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/GlassProof.app"
+          cp tests/native-glass-simulator/Info.plist "$RUNNER_TEMP/GlassProof.app/Info.plist"
+          SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+          ARCH="$(uname -m)"
+          xcrun swiftc \
+            -sdk "$SDK" \
+            -target "${ARCH}-apple-ios26.0-simulator" \
+            -framework UIKit \
+            -Xlinker -rpath -Xlinker @executable_path/Frameworks \
+            tests/native-glass-simulator/GlassDemo.swift \
+            -o "$RUNNER_TEMP/GlassProof.app/GlassProof"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$RUNNER_TEMP/GlassProof.app/Info.plist"
+      - name: Boot simulator and render screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID="$(xcrun simctl list devices available | grep -m1 -E 'iPhone .*\([A-F0-9-]{36}\)' | sed -E 's/.*\(([A-F0-9-]{36})\).*/\1/')"
+          test -n "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$RUNNER_TEMP/GlassProof.app"
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof
+          sleep 3
+          mkdir -p proof
+          xcrun simctl io "$UDID" screenshot proof/native-glass-simulator.png
+          test -s proof/native-glass-simulator.png
+          echo "Simulator screenshot captured. Screenshot visual inspection is still required."
+      - name: Upload simulator screenshot (not a Discord IPA)
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-glass-simulator-proof
+          path: proof/native-glass-simulator.png
+          if-no-files-found: error
