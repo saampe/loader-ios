@@ -1,5 +1,22 @@
 #import <UIKit/UIKit.h>
 
+// UIKit glass can fail to render when its effect is assigned before the view
+// enters a visible UIWindow. Install only after layout in an attached window.
+@interface GlassProbeEffectView : UIVisualEffectView
+@property (nonatomic, strong) UIVisualEffect *pendingGlassEffect;
+@end
+
+@implementation GlassProbeEffectView
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (self.window && self.pendingGlassEffect && self.effect != self.pendingGlassEffect)
+    {
+        self.effect = self.pendingGlassEffect;
+    }
+}
+@end
+
 // Isolated, opt-in visual material probe. It never modifies Discord's React Native
 // controls, theme tokens or view hierarchy below the window root.
 @interface NativeGlassProbe : NSObject
@@ -70,7 +87,8 @@ static UIView *glassProbeContainer = nil;
         container.center = CGPointMake(CGRectGetMidX(host.bounds),
                                        CGRectGetMaxY(host.bounds) - bottom - 180.0);
 
-        UIVisualEffectView *glass = [[UIVisualEffectView alloc] initWithEffect:(UIVisualEffect *)effect];
+        GlassProbeEffectView *glass = [[GlassProbeEffectView alloc] initWithEffect:nil];
+        glass.pendingGlassEffect = (UIVisualEffect *)effect;
         glass.frame = container.bounds;
         glass.autoresizingMask = UIViewAutoresizingFlexibleWidth |
                                  UIViewAutoresizingFlexibleHeight;
