@@ -49,3 +49,31 @@ Do not assume the generic Fabric surface API identifies Discord's existing tabs.
    explicitly disclosing what the simulator cannot verify.
 
 No Discord IPA was built as part of this analysis.
+
+
+## Offline Discord 350.0 source inspection (2026-10-25)
+
+The *existing* private Discord 350.0 source IPA was analyzed in the
+`saampe/Unbound-iOS` Actions workflow `Inspect Discord Navigation Offline`,
+run 40234346725. **No IPA was built or modified, and no phone install was needed.**
+
+Confirmed fixture:
+- `Discord.app/main.jsbundle` (68,560,176 bytes)
+- `Discord.app/Discord` executable (56,638,176 bytes)
+- Both contain navigation-related indicators, including `TabBar`,
+  `NavigationContainer`, and React Native markers.
+- Crucially, native executable strings include `RNSTabBarController`,
+  `RNSTabBarAppearanceCoordinator`, `findTabBarController`, and
+  `getTabNavigator:`. This demonstrates that native RNScreens tabs are
+  present in the binary, **not** that the active Discord bottom navigation
+  actually uses them.
+
+Next: distinguish a live `UITabBarController`/`RNSTabBarController`
+from a custom JS/React Native tab implementation. A static string match alone
+cannot justify automatically attaching glass. The `NativePlugin.objc.snapshot`
+and `findViews` APIs already exist and provide a bounded way to inspect live
+native views, if a suitable existing diagnostic channel is available. Do not
+force an additional IPA just to capture this.
+
+Offline inspection artifact: private workflow run 40234346725, artifact
+`offline-navigation-inspection`. Contains names and counts, not the IPA.
