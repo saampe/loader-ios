@@ -25,6 +25,65 @@ static char kNativeGlassHostAssociation;
 static char kNativeGlassOriginalBackground;
 static char kNativeGlassOriginalOpaque;
 
+// A React Native testID is bridged to UIView.accessibilityIdentifier on iOS.
+// It provides a stable semantic anchor even if Fabric class names or the
+// navigation layout change. Only our namespaced identifiers are permitted.
++ (UIView *)uniqueMarkedHost:(NSString *)identifier
+{
+    if (![NSThread isMainThread] || ![identifier isKindOfClass:[NSString class]] ||
+        ![identifier hasPrefix:@"unbound.glass."] || identifier.length > 96)
+        return nil;
+
+    UIView *matched = nil;
+    NSUInteger scanned = 0;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes)
+    {
+        if (![scene isKindOfClass:[UIWindowScene class]] ||
+            scene.activationState != UISceneActivationStateForegroundActive)
+            continue;
+        for (UIWindow *window in ((UIWindowScene *)scene).windows)
+        {
+            if (window.hidden || window.alpha < 0.01 ||
+                window.windowLevel != UIWindowLevelNormal || !window.rootViewController.view)
+                continue;
+
+            NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:window.rootViewController.view];
+            for (NSUInteger index = 0; index < queue.count && scanned < 4096; index++, scanned++)
+            {
+                UIView *view = queue[index];
+                if ([view.accessibilityIdentifier isEqualToString:identifier])
+                {
+                    if (matched) return nil; // ambiguous anchor: fail closed
+                    matched = view;
+                }
+                for (UIView *child in view.subviews)
+                {
+                    if (queue.count >= 4096) break;
+                    [queue addObject:child];
+                }
+            }
+            if (scanned >= 4096) return nil;
+        }
+    }
+    return matched;
+}
+
++ (BOOL)attachToMarkedHost:(NSString *)identifier clearStyle:(BOOL)clearStyle
+ allowBackgroundOverride:(BOOL)allowBackgroundOverride
+{
+    NSAssert(NSThread.isMainThread, @"Native glass marker search requires main thread");
+    UIView *host = [self uniqueMarkedHost:identifier];
+    return host && [self attachToHost:host clearStyle:clearStyle
+                    allowBackgroundOverride:allowBackgroundOverride];
+}
+
++ (void)detachFromMarkedHost:(NSString *)identifier
+{
+    NSAssert(NSThread.isMainThread, @"Native glass marker search requires main thread");
+    UIView *host = [self uniqueMarkedHost:identifier];
+    if (host) [self detachFromHost:host];
+}
+
 + (BOOL)isAttachedToHost:(UIView *)host
 {
     if (!host) return NO;
