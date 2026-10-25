@@ -309,7 +309,7 @@ static NSData *publicKeyData(void)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         data = [[NSData alloc] initWithBase64EncodedString:
-                                      @"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQPX4NgN7w+oQW/t31KTzr45C8edXjinWB2pgvXhOqipWKRJ1wfnlfZmh4PwVtT9C/ng0bDA2RjvzxhHC6z0leA=="
+                                      @"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE/cnS+Tj4UyOX9/kkv+qYgAhDFGHq9c5D8JNahHWBgytEONQBR66O7hFTwuvsJ4wmQDWaq+CpKh6FW0LANGuMFA=="
                                       options:0];
     });
     return data;
