@@ -44,10 +44,18 @@ static char kNativeGlassHostAssociation;
     if (!host || !host.window || host.bounds.size.width < 1 || host.bounds.size.height < 1)
         return NO;
     if (![NSThread isMainThread]) return NO;
-    if ([self isAttachedToHost:host]) return YES;
+    // A host can be reused while a React Native screen changes. Never claim
+    // success for a stale or detached material layer.
+    UIVisualEffectView *existing = objc_getAssociatedObject(host, &kNativeGlassHostAssociation);
+    if (existing)
+    {
+        if (existing.superview == host) return YES;
+        objc_setAssociatedObject(host, &kNativeGlassHostAssociation, nil, OBJC_ASSOCIATION_ASSIGN);
+    }
     if (@available(iOS 26.0, *))
     {
         UIColor *background = host.backgroundColor;
+        if (host.opaque) return NO;
         if (background)
         {
             CGFloat alpha = CGColorGetAlpha(background.CGColor);
