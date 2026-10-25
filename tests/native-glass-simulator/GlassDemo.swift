@@ -1,5 +1,12 @@
 import UIKit
 
+@_silgen_name("UnboundSimulatorAttachGlass")
+private func attachActualGlass(_ host: UnsafeMutableRawPointer, _ clear: Int32, _ overrideBackground: Int32) -> Int32
+@_silgen_name("UnboundSimulatorDetachGlass")
+private func detachActualGlass(_ host: UnsafeMutableRawPointer)
+@_silgen_name("UnboundSimulatorIsGlassAttached")
+private func isActualGlassAttached(_ host: UnsafeMutableRawPointer) -> Int32
+
 @main
 final class GlassDemo: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -7,7 +14,9 @@ final class GlassDemo: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let window = UIWindow(frame: UIScreen.main.bounds)
-        let controller: UIViewController = ProcessInfo.processInfo.arguments.contains("--tabs") ? NativeTabsProofController() : GlassDemoViewController()
+        let args = ProcessInfo.processInfo.arguments
+        let controller: UIViewController = args.contains("--actual-host") ? ActualHostProofController() :
+            (args.contains("--tabs") ? NativeTabsProofController() : GlassDemoViewController())
         window.rootViewController = controller
         window.makeKeyAndVisible()
         self.window = window
@@ -234,5 +243,68 @@ final class NativeTabsProofController: UITabBarController {
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
         tabBar.isTranslucent = true
+    }
+}
+
+
+// Runs precisely sources/NativeGlassHost.m through a tiny C shim. This tests
+// the deployed Objective-C implementation rather than an analogous Swift view.
+final class ActualHostProofController: UIViewController {
+    private let target = UIView()
+    private let status = UILabel()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(red: 0.06, green: 0.08, blue: 0.14, alpha: 1)
+
+        let bands: [UIColor] = [.systemIndigo, .systemTeal, .systemOrange, .systemPurple, .systemPink]
+        for (index, color) in bands.enumerated() {
+            let band = UIView()
+            band.backgroundColor = color
+            band.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(band)
+            NSLayoutConstraint.activate([
+                band.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                band.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                band.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -CGFloat(index) * 105),
+                band.heightAnchor.constraint(equalToConstant: 105)
+            ])
+        }
+
+        target.translatesAutoresizingMaskIntoConstraints = false
+        target.backgroundColor = UIColor(red: 0.11, green: 0.14, blue: 0.20, alpha: 1)
+        target.isOpaque = true
+        view.addSubview(target)
+        NSLayoutConstraint.activate([
+            target.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            target.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -26),
+            target.widthAnchor.constraint(equalToConstant: 320),
+            target.heightAnchor.constraint(equalToConstant: 72)
+        ])
+
+        status.text = "Actual ObjC native glass host"
+        status.textAlignment = .center
+        status.textColor = .white
+        status.font = .systemFont(ofSize: 15, weight: .semibold)
+        status.translatesAutoresizingMaskIntoConstraints = false
+        target.addSubview(status)
+        NSLayoutConstraint.activate([
+            status.centerXAnchor.constraint(equalTo: target.centerXAnchor),
+            status.centerYAnchor.constraint(equalTo: target.centerYAnchor)
+        ])
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !ProcessInfo.processInfo.arguments.contains("--actual-host-baseline") else {
+            status.text = "Opaque baseline (no native glass)"
+            return
+        }
+        let pointer = Unmanaged.passUnretained(target).toOpaque()
+        let attached = attachActualGlass(pointer, 0, 1) != 0
+        let confirmed = isActualGlassAttached(pointer) != 0
+        status.text = attached && confirmed ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
+        // Fail test if a native material cannot be attached to a *known* view.
+        precondition(attached && confirmed, "Exact NativeGlassHost.m integration failed")
     }
 }
