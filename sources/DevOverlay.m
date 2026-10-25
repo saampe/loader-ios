@@ -1,5 +1,11 @@
 #import "DevOverlay.h"
 
+@interface NativeGlassProbe : NSObject
++ (BOOL)isVisible;
++ (BOOL)toggleForWindow:(UIWindow *)window;
+@end
+
+
 @interface DevOverlayPassthroughWindow : UIWindow
 @end
 
@@ -575,6 +581,13 @@ static const CGFloat kDevOverlayButtonMargin = 8;
                                                style:UIAlertActionStyleDefault
                                              handler:^(__unused UIAlertAction *action) {
                                                  [self presentSettingsEditor];
+                                             }]];
+    [menu addAction:[UIAlertAction actionWithTitle:
+                         ([NativeGlassProbe isVisible] ? @"Hide Native Glass Test" : @"Show Native Glass Test")
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(__unused UIAlertAction *action) {
+                                                 UIWindow *window = discordKeyWindow ?: [self activeKeyWindow];
+                                                 [NativeGlassProbe toggleForWindow:window];
                                              }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"Share Theme Diagnostics"
                                                style:UIAlertActionStyleDefault
