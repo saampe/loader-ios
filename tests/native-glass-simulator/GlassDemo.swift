@@ -7,7 +7,7 @@ final class GlassDemo: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         let window = UIWindow(frame: UIScreen.main.bounds)
-        let controller = GlassDemoViewController()
+        let controller: UIViewController = ProcessInfo.processInfo.arguments.contains("--tabs") ? NativeTabsProofController() : GlassDemoViewController()
         window.rootViewController = controller
         window.makeKeyAndVisible()
         self.window = window
@@ -158,5 +158,49 @@ final class GlassDemoViewController: UIViewController {
         text.textAlignment = .center
         effect.contentView.addSubview(text)
         background.addSubview(effect)
+    }
+}
+
+    
+// Native RNSTabsHostIOS / RNSTabBarController ultimately uses UITabBarController.
+// Prove Apple glass material and native tab hit targets independently of Discord.
+final class NativeTabsProofController: UITabBarController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        func screen(_ title: String, symbol: String, color: UIColor) -> UIViewController {
+            let controller = UIViewController()
+            controller.view.backgroundColor = color
+            let heading = UILabel()
+            heading.text = title + " — native UIKit tabs"
+            heading.textColor = .white
+            heading.font = .systemFont(ofSize: 22, weight: .semibold)
+            heading.translatesAutoresizingMaskIntoConstraints = false
+            controller.view.addSubview(heading)
+            NSLayoutConstraint.activate([
+                heading.centerXAnchor.constraint(equalTo: controller.view.centerXAnchor),
+                heading.centerYAnchor.constraint(equalTo: controller.view.centerYAnchor)
+            ])
+            controller.tabBarItem = UITabBarItem(title: title, image: UIImage(systemName: symbol), tag: 0)
+            return controller
+        }
+        viewControllers = [
+            screen("Servers", symbol: "square.grid.2x2", color: UIColor(red: 0.12, green: 0.15, blue: 0.22, alpha: 1)),
+            screen("Messages", symbol: "bubble.left.and.bubble.right", color: UIColor(red: 0.18, green: 0.22, blue: 0.32, alpha: 1)),
+            screen("Activity", symbol: "bell", color: UIColor(red: 0.12, green: 0.18, blue: 0.24, alpha: 1)),
+            screen("You", symbol: "person.crop.circle", color: UIColor(red: 0.20, green: 0.22, blue: 0.29, alpha: 1))
+        ]
+        selectedIndex = 1
+        let appearance = UITabBarAppearance()
+        if ProcessInfo.processInfo.arguments.contains("--tabs-baseline") {
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = UIColor(red: 0.14, green: 0.16, blue: 0.19, alpha: 1)
+        } else {
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundEffect = UIGlassEffect(style: .regular)
+            appearance.backgroundColor = .clear
+        }
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
+        tabBar.isTranslucent = true
     }
 }
