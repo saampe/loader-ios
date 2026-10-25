@@ -195,9 +195,10 @@ final class NativeTabsProofController: UITabBarController {
             appearance.configureWithOpaqueBackground()
             appearance.backgroundColor = UIColor(red: 0.14, green: 0.16, blue: 0.19, alpha: 1)
         } else {
-            appearance.configureWithTransparentBackground()
-            appearance.backgroundEffect = UIGlassEffect(style: .regular)
-            appearance.backgroundColor = .clear
+            // UIKit owns its iOS 26+ native tab bar glass system.
+            // UITabBarAppearance.backgroundEffect only accepts UIBlurEffect,
+            // not UIGlassEffect; keep the system default material intact.
+            appearance.configureWithDefaultBackground()
         }
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
