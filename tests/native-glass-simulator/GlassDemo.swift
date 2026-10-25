@@ -165,11 +165,42 @@ final class GlassDemoViewController: UIViewController {
 // Native RNSTabsHostIOS / RNSTabBarController ultimately uses UITabBarController.
 // Prove Apple glass material and native tab hit targets independently of Discord.
 final class NativeTabsProofController: UITabBarController {
+    private var explicitGlass: DeferredGlassView?
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard !ProcessInfo.processInfo.arguments.contains("--tabs-baseline") else { return }
+        if explicitGlass == nil {
+            let material = DeferredGlassView(effect: nil)
+            material.pendingGlass = UIGlassEffect(style: .regular)
+            material.cornerConfiguration = .capsule()
+            material.isUserInteractionEnabled = false
+            view.insertSubview(material, belowSubview: tabBar)
+            explicitGlass = material
+        }
+        explicitGlass?.frame = tabBar.frame
+    }
     override func viewDidLoad() {
         super.viewDidLoad()
         func screen(_ title: String, symbol: String, color: UIColor) -> UIViewController {
             let controller = UIViewController()
             controller.view.backgroundColor = color
+            // Strong spatial variation behind the floating bar reveals whether
+            // the actual material refracts/colors the backdrop.
+            let colorBands: [UIColor] = [.systemIndigo, .systemTeal, .systemPink,
+                .systemOrange, .systemPurple, .systemGreen]
+            for (idx, band) in colorBands.enumerated() {
+                let stripe = UIView()
+                stripe.backgroundColor = band.withAlphaComponent(0.85)
+                stripe.translatesAutoresizingMaskIntoConstraints = false
+                controller.view.addSubview(stripe)
+                NSLayoutConstraint.activate([
+                    stripe.leadingAnchor.constraint(equalTo: controller.view.leadingAnchor),
+                    stripe.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor),
+                    stripe.bottomAnchor.constraint(equalTo: controller.view.bottomAnchor,
+                                                   constant: -CGFloat(idx) * 42),
+                    stripe.heightAnchor.constraint(equalToConstant: 42)
+                ])
+            }
             let heading = UILabel()
             heading.text = title + " — native UIKit tabs"
             heading.textColor = .white
@@ -195,10 +226,10 @@ final class NativeTabsProofController: UITabBarController {
             appearance.configureWithOpaqueBackground()
             appearance.backgroundColor = UIColor(red: 0.14, green: 0.16, blue: 0.19, alpha: 1)
         } else {
-            // UIKit owns its iOS 26+ native tab bar glass system.
-            // UITabBarAppearance.backgroundEffect only accepts UIBlurEffect,
-            // not UIGlassEffect; keep the system default material intact.
-            appearance.configureWithDefaultBackground()
+            // Clear native bar to expose a real UIGlassEffect behind its icons.
+            // UITabBarAppearance.backgroundEffect accepts UIBlurEffect only.
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundColor = .clear
         }
         tabBar.standardAppearance = appearance
         tabBar.scrollEdgeAppearance = appearance
