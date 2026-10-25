@@ -78,6 +78,7 @@ final class GlassDemoViewController: UIViewController {
         let effect = DeferredGlassView(effect: nil)
         effect.pendingGlass = UIGlassEffect(style: .clear)
         effect.frame = CGRect(x: 45, y: 20, width: 240, height: 70)
+        effect.cornerConfiguration = .capsule()
         let text = UILabel(frame: effect.bounds)
         text.text = "Clear on a dark surface"
         text.textColor = .label
@@ -95,6 +96,7 @@ final class GlassDemoViewController: UIViewController {
         let effect = DeferredGlassView(effect: nil)
         effect.pendingGlass = UIGlassEffect(style: style)
         effect.frame = CGRect(x: 45, y: y, width: 240, height: 70)
+        effect.cornerConfiguration = .capsule()
         let text = UILabel(frame: effect.bounds)
         text.text = label
         text.textColor = .label
