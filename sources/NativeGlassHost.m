@@ -22,6 +22,8 @@
 @implementation NativeGlassHost
 
 static char kNativeGlassHostAssociation;
+static char kNativeGlassOriginalBackground;
+static char kNativeGlassOriginalOpaque;
 
 + (BOOL)isAttachedToHost:(UIView *)host
 {
@@ -36,9 +38,24 @@ static char kNativeGlassHostAssociation;
     UIVisualEffectView *glass = objc_getAssociatedObject(host, &kNativeGlassHostAssociation);
     [glass removeFromSuperview];
     objc_setAssociatedObject(host, &kNativeGlassHostAssociation, nil, OBJC_ASSOCIATION_ASSIGN);
+    NSNumber *originalOpaque = objc_getAssociatedObject(host, &kNativeGlassOriginalOpaque);
+    if (originalOpaque)
+    {
+        id originalBackground = objc_getAssociatedObject(host, &kNativeGlassOriginalBackground);
+        host.backgroundColor = originalBackground == [NSNull null] ? nil : originalBackground;
+        host.opaque = originalOpaque.boolValue;
+        objc_setAssociatedObject(host, &kNativeGlassOriginalOpaque, nil, OBJC_ASSOCIATION_ASSIGN);
+        objc_setAssociatedObject(host, &kNativeGlassOriginalBackground, nil, OBJC_ASSOCIATION_ASSIGN);
+    }
 }
 
 + (BOOL)attachToTransparentHost:(UIView *)host clearStyle:(BOOL)clearStyle
+{
+    return [self attachToHost:host clearStyle:clearStyle allowBackgroundOverride:NO];
+}
+
++ (BOOL)attachToHost:(UIView *)host clearStyle:(BOOL)clearStyle
+ allowBackgroundOverride:(BOOL)allowBackgroundOverride
 {
     NSAssert(NSThread.isMainThread, @"NativeGlassHost requires main thread");
     if (!host || !host.window || host.bounds.size.width < 1 || host.bounds.size.height < 1)
@@ -55,11 +72,18 @@ static char kNativeGlassHostAssociation;
     if (@available(iOS 26.0, *))
     {
         UIColor *background = host.backgroundColor;
-        if (host.opaque) return NO;
-        if (background)
+        BOOL isOpaque = host.opaque || (background && CGColorGetAlpha(background.CGColor) > 0.01);
+        if (isOpaque && !allowBackgroundOverride) return NO;
+        // Never modify an entire UIWindow or screen-sized React root when a
+        // plugin requests a transparent navigation *surface*.
+        if (isOpaque && allowBackgroundOverride)
         {
-            CGFloat alpha = CGColorGetAlpha(background.CGColor);
-            if (alpha > 0.01) return NO;
+            CGRect area = [host convertRect:host.bounds toView:host.window];
+            if ([host isKindOfClass:[UIWindow class]] ||
+                area.size.height > MIN(240.0, host.window.bounds.size.height * 0.36) ||
+                area.size.width < 72.0 ||
+                CGRectIsNull(area) || CGRectIsInfinite(area))
+                return NO;
         }
 
         Class glassClass = NSClassFromString(@"UIGlassEffect");
@@ -78,6 +102,15 @@ static char kNativeGlassHostAssociation;
         glass.cornerConfiguration = [UICornerConfiguration capsuleConfiguration];
         glass.userInteractionEnabled = NO;
         glass.backgroundColor = UIColor.clearColor;
+        if (isOpaque && allowBackgroundOverride)
+        {
+            objc_setAssociatedObject(host, &kNativeGlassOriginalBackground,
+                                     background ?: (id)[NSNull null], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(host, &kNativeGlassOriginalOpaque,
+                                     @(host.opaque), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            host.opaque = NO;
+            host.backgroundColor = UIColor.clearColor;
+        }
         [host insertSubview:glass atIndex:0];
 
         objc_setAssociatedObject(host, &kNativeGlassHostAssociation, glass, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
