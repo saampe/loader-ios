@@ -49,8 +49,10 @@ final class GlassDemoViewController: UIViewController {
             title.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
 
-        addGlass(.regular, label: "Regular UIGlassEffect", y: 95)
-        addGlass(.clear, label: "Clear UIGlassEffect", y: 200)
+        if !ProcessInfo.processInfo.arguments.contains("--baseline") {
+            addGlass(.regular, label: "Regular UIGlassEffect", y: 95)
+            addGlass(.clear, label: "Clear UIGlassEffect", y: 200)
+        }
 
         let dark = UIView()
         dark.backgroundColor = UIColor(red: 0.08, green: 0.09, blue: 0.12, alpha: 1)
@@ -62,6 +64,7 @@ final class GlassDemoViewController: UIViewController {
             dark.widthAnchor.constraint(equalToConstant: 330),
             dark.heightAnchor.constraint(equalToConstant: 120)
         ])
+        guard !ProcessInfo.processInfo.arguments.contains("--baseline") else { return }
         let effect = UIVisualEffectView(effect: UIGlassEffect(style: .clear))
         effect.frame = CGRect(x: 45, y: 20, width: 240, height: 70)
         let text = UILabel(frame: effect.bounds)
