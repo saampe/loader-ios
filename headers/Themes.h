@@ -19,6 +19,7 @@
 + (NSString *)getTheme;
 + (NSArray *)getThemes;
 + (NSArray *)reloadThemes;
++ (void)writeDiagnosticReport;
 + (void)swizzleRawColors:(NSDictionary *)payload;
 + (UIColor *)parseColor:(NSString *)color;
 + (void)restoreOriginalRawColors;
