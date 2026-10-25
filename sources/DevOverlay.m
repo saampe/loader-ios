@@ -6,11 +6,6 @@
 @end
 
 
-@interface NativeTabsGlassControl : NSObject
-+ (BOOL)isEnabled;
-+ (BOOL)toggleAndRefresh;
-@end
-
 @interface DevOverlayPassthroughWindow : UIWindow
 @end
 
@@ -593,12 +588,6 @@ static const CGFloat kDevOverlayButtonMargin = 8;
                                              handler:^(__unused UIAlertAction *action) {
                                                  UIWindow *window = discordKeyWindow ?: [self activeKeyWindow];
                                                  [NativeGlassProbe toggleForWindow:window];
-                                             }]];
-    [menu addAction:[UIAlertAction actionWithTitle:
-                         ([NativeTabsGlassControl isEnabled] ? @"Disable Native Tab Glass" : @"Enable Native Tab Glass")
-                                               style:UIAlertActionStyleDefault
-                                             handler:^(__unused UIAlertAction *action) {
-                                                 [NativeTabsGlassControl toggleAndRefresh];
                                              }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"Share Theme Diagnostics"
                                                style:UIAlertActionStyleDefault
