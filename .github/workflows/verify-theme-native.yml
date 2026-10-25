@@ -6,6 +6,7 @@ on:
       - 'sources/Themes.x'
       - 'sources/DevOverlay.m'
       - 'sources/NativeGlassProbe.m'
+      - 'sources/NativeGlassHost.m'
       - 'headers/Themes.h'
       - '.github/workflows/verify-theme-native.yml'
   workflow_dispatch:
