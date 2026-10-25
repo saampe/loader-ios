@@ -19,7 +19,17 @@ static BOOL                                        customThemeActive = NO;
 
 + (NSString *)makeJSON
 {
-    return [Utilities JSONStringFromObject:themes options:0 fallback:@"[]"];
+    // The JavaScript themes manager expects a JSON string as each theme's
+    // bundle, while native color hooks need the parsed dictionary. Serialize
+    // bundles only for the JS preload payload; preserve native theme data.
+    NSMutableArray *payload = [NSMutableArray arrayWithCapacity:themes.count];
+    for (NSDictionary *theme in themes)
+    {
+        id bundle = theme[@"bundle"];
+        NSString *bundleString = [Utilities JSONStringFromObject:bundle options:0 fallback:@"{}"];
+        [payload addObject:@{@"manifest": theme[@"manifest"], @"bundle": bundleString}];
+    }
+    return [Utilities JSONStringFromObject:payload options:0 fallback:@"[]"];
 };
 
 + (NSDictionary *)getThemeById:(NSString *)manifestId
