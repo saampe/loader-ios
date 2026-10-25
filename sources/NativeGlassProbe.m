@@ -75,8 +75,8 @@ static UIView *glassProbeContainer = nil;
         glass.autoresizingMask = UIViewAutoresizingFlexibleWidth |
                                  UIViewAutoresizingFlexibleHeight;
         glass.userInteractionEnabled = NO;
-        glass.layer.cornerRadius = 25.0;
-        glass.layer.cornerCurve = kCACornerCurveContinuous;
+        // Use iOS 26 glass-aware corner geometry, not a CoreAnimation mask.
+        glass.cornerConfiguration = [UICornerConfiguration capsuleConfiguration];
         // Avoid clipping the effect renderer, as UIKit manages its own glass mask.
         glass.clipsToBounds = NO;
         [container addSubview:glass];
