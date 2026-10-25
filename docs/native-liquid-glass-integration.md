@@ -133,3 +133,25 @@ isolated simulator; perform no IPA integration until its exact renderer passes.
 
 Source screenshots: `saampe/loader-ios` workflow run 40235805881,
 artifact `native-glass-simulator-proof`.
+
+
+## Direct production-code simulator verification
+
+Run 40236344191 compiled **the same** `sources/NativeGlassHost.m` file used
+by the production loader together with a small C ABI shim in an isolated iOS
+26 simulator app. The test created a deliberately opaque 320×72 navigation
+host, then invoked `attachToHost:clearStyle:allowBackgroundOverride:` with the
+override enabled.
+
+The attachment and association-state assertions passed. The captured image
+`actual-objc-host-glass.png` shows **visible refraction through an actual
+`UIGlassEffect`** and crisp text over a multicolored backdrop; the
+`actual-objc-host-baseline.png` control displays a flat opaque surface.
+The images' bottom fifth has substantial pixel differences (~47/56/65 mean
+RGB channel levels). This establishes that the actual ObjC class works in a
+normal UIKit view tree, not merely the Swift approximation.
+
+Still unverified: ownership and stacking of Discord's *actual* navigation
+host. A UIKit `UITabBar` must not receive a redundant sibling glass layer,
+as shown by the earlier icon-blurring regression. Do not request a new Discord
+IPA until a reliable React Native host anchor is obtained.
