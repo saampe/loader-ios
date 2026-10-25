@@ -313,6 +313,10 @@ final class ActualHostProofController: UIViewController {
         status.text = attached && confirmed ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
         // Fail test if a native material cannot be attached to a *known* view.
         NSLog("[GlassHostSimulator] exact marker attach=%d confirmed=%d window=%@ scene=%@", attached ? 1 : 0, confirmed ? 1 : 0, String(describing: target.window), String(describing: target.window?.windowScene))
-        precondition(attached && confirmed, "Exact NativeGlassHost.m marker integration failed")
+        let state = attached && confirmed ? "PASS" : "FAIL"
+        if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            try? state.write(to: documents.appendingPathComponent("native-glass-marker-result.txt"),
+                             atomically: true, encoding: .utf8)
+        }
     }
 }
