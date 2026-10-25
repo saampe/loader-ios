@@ -30,6 +30,7 @@ jobs:
           SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
           ARCH="$(uname -m)"
           xcrun swiftc \
+            -parse-as-library \
             -sdk "$SDK" \
             -target "${ARCH}-apple-ios26.0-simulator" \
             -framework UIKit \
