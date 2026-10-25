@@ -6021,19 +6021,24 @@ static void installObjC(Runtime &runtime, Object &objc)
     // Explicit-anchor native glass integration. All UIKit operations run on the
     // main queue. We never guess a Discord RN target or alter its theme colors.
     objc.setProperty(runtime, "glassAttach", makeFunction(
-        "glassAttach", 2, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+        "glassAttach", 3, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
             id candidate = count > 0 ? objcValue(rt, args[0]) : nil;
             if (![candidate isKindOfClass:[UIView class]])
                 throw JSError(rt, "glassAttach requires a native UIView handle");
             if (count > 1 && !args[1].isBool())
                 throw JSError(rt, "glassAttach clearStyle must be boolean");
+            if (count > 2 && !args[2].isBool())
+                throw JSError(rt, "glassAttach allowBackgroundOverride must be boolean");
             UIView *host = (UIView *) candidate;
             bool clearStyle = count > 1 && args[1].getBool();
+            bool overrideBackground = count > 2 && args[2].getBool();
             auto success = std::make_shared<std::atomic<bool>>(false);
             return executeMainAsynchronously(
                 rt,
-                [host, clearStyle, success]() {
-                    success->store([NativeGlassHost attachToTransparentHost:host clearStyle:clearStyle]);
+                [host, clearStyle, overrideBackground, success]() {
+                    success->store([NativeGlassHost attachToHost:host
+                                                     clearStyle:clearStyle
+                                        allowBackgroundOverride:overrideBackground]);
                 },
                 [success](Runtime &) -> Value { return Value(success->load()); });
         }));
