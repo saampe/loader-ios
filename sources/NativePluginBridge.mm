@@ -6354,6 +6354,7 @@ void registerNativePluginBridge(Runtime &runtime)
         "native.objc.invokeAsync",
         "native.objc.batch",
         "native.objc.snapshot",
+        "native.objc.glassHost",
         "native.objc.ivars",
         "native.objc.associations",
         "native.objc.hooks",
