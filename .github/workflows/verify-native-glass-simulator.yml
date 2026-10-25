@@ -36,11 +36,18 @@ jobs:
           cp tests/native-glass-simulator/Info.plist "$RUNNER_TEMP/GlassProof.app/Info.plist"
           SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
           ARCH="$(uname -m)"
+          xcrun clang -fobjc-arc -target "${ARCH}-apple-ios26.0-simulator" \
+            -isysroot "$SDK" -I headers \
+            -c sources/NativeGlassHost.m -o "$RUNNER_TEMP/NativeGlassHost.o"
+          xcrun clang -fobjc-arc -target "${ARCH}-apple-ios26.0-simulator" \
+            -isysroot "$SDK" -I headers \
+            -c tests/native-glass-simulator/GlassHostShim.m -o "$RUNNER_TEMP/GlassHostShim.o"
           xcrun swiftc \
             -parse-as-library \
             -sdk "$SDK" \
             -target "${ARCH}-apple-ios26.0-simulator" \
             -framework UIKit \
+            "$RUNNER_TEMP/NativeGlassHost.o" "$RUNNER_TEMP/GlassHostShim.o" \
             -Xlinker -rpath -Xlinker @executable_path/Frameworks \
             tests/native-glass-simulator/GlassDemo.swift \
             -o "$RUNNER_TEMP/GlassProof.app/GlassProof"
@@ -74,6 +81,16 @@ jobs:
           xcrun simctl io "$UDID" screenshot proof/native-tabs-opaque-baseline.png
           test -s proof/native-tabs-liquid-glass.png
           test -s proof/native-tabs-opaque-baseline.png
+          xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --actual-host
+          sleep 3
+          xcrun simctl io "$UDID" screenshot proof/actual-objc-host-glass.png
+          xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --actual-host --actual-host-baseline
+          sleep 3
+          xcrun simctl io "$UDID" screenshot proof/actual-objc-host-baseline.png
+          test -s proof/actual-objc-host-glass.png
+          test -s proof/actual-objc-host-baseline.png
       - name: Analyze actual screenshot differences
         shell: bash
         run: |
