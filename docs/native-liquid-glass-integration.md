@@ -77,3 +77,41 @@ force an additional IPA just to capture this.
 
 Offline inspection artifact: private workflow run 40234346725, artifact
 `offline-navigation-inspection`. Contains names and counts, not the IPA.
+
+
+## Target identification: Discord 350 Hermes bundle (further offline proof)
+
+The existing source IPA contains a Hermes bytecode bundle with identifiable module
+names:
+- `modules/main_tabs_v2/native/MainNavigator.tsx`
+- `modules/main_tabs_v2/native/MainTabsConstants.tsx`
+- `modules/main_tabs_v2/native/panels/MainTabsNavigatorPanel.tsx`
+- `modules/main_tabs_v2/native/tabs/{guilds,messages,notifications,you}/...`
+- `modules/main_tabs_v2/native/you_bar/YouBarStackNavigator.tsx`
+
+It also contains strings `RNSTabsHostIOS`, `RNSTabsScreenIOS`, and
+`RNSTabsBottomAccessoryContent`, plus a native `RNSTabBarController` class
+in the executable. These are strong leads to investigate with a *runtime*
+class-specific check, not evidence that the visible Discord tab bar uses this
+class.
+
+The user-facing profile bottom area may instead be owned by a React Native
+module under `you_bar` or a custom main-tabs panel. Automatic glass injection
+must not assume any one interpretation without an actual mounted-view anchor.
+
+### Critical UIKit distinction
+
+The iOS SDK declares `UITabBarAppearance.backgroundEffect` as
+`UIBlurEffect`, **not** `UIVisualEffect`. Assigning `UIGlassEffect`
+directly fails Swift compilation. UIKit's default tab-bar appearance may already
+use native Liquid Glass. In a uniform-background simulator, an opaque tab-bar
+appearance and the default appearance rendered *pixel-identical* in the bottom
+navigation area. Therefore merely calling
+`configureWithDefaultBackground` is **not** an adequate proof that our code
+added Liquid Glass.
+
+A more discriminating simulator test uses an explicit `UIGlassEffect` behind a
+transparent native tab bar, with colored patterns in the content and a
+same-transparency control. The native tab bar appearance experiment in
+`sources/NativeTabsGlass.x` is intentionally disabled by default pending that
+review. No additional Discord IPA should be built for discovery.
