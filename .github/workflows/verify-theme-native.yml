@@ -7,6 +7,8 @@ on:
       - 'sources/DevOverlay.m'
       - 'sources/NativeGlassProbe.m'
       - 'sources/NativeGlassHost.m'
+      - 'sources/NativePluginBridge.mm'
+      - 'headers/NativeGlassHost.h'
       - 'headers/Themes.h'
       - '.github/workflows/verify-theme-native.yml'
   workflow_dispatch:
