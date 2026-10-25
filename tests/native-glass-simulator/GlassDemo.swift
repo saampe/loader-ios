@@ -223,8 +223,8 @@ final class NativeTabsProofController: UITabBarController {
         selectedIndex = 1
         let appearance = UITabBarAppearance()
         if ProcessInfo.processInfo.arguments.contains("--tabs-baseline") {
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor(red: 0.14, green: 0.16, blue: 0.19, alpha: 1)
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundColor = .clear
         } else {
             // Clear native bar to expose a real UIGlassEffect behind its icons.
             // UITabBarAppearance.backgroundEffect accepts UIBlurEffect only.
