@@ -291,10 +291,18 @@ static BOOL                                        observingThemeSettings = NO;
 
     if (selected && ![Themes isValidCustomTheme:selected])
     {
-        [Logger error:LOG_CATEGORY_THEMES
-               format:@"Selected theme %@ is not loaded; leaving current theme unchanged.", selected];
-        [Themes writeDiagnosticReport];
-        return;
+        // The JS manager can install a theme after native startup. Re-scan on
+        // selection changes rather than requiring an app reinstall or restart.
+        [Logger info:LOG_CATEGORY_THEMES
+              format:@"Theme %@ was installed after startup; re-scanning themes.", selected];
+        [Themes reloadThemes];
+        if (![Themes isValidCustomTheme:selected])
+        {
+            [Logger error:LOG_CATEGORY_THEMES
+                   format:@"Selected theme %@ is still missing after rescan.", selected];
+            [Themes writeDiagnosticReport];
+            return;
+        }
     }
 
     if (selected && customThemeActive && [currentThemeId isEqualToString:selected])
