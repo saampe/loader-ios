@@ -9,5 +9,8 @@ NS_ASSUME_NONNULL_BEGIN
  allowBackgroundOverride:(BOOL)allowBackgroundOverride;
 + (void)detachFromHost:(UIView *)host;
 + (BOOL)isAttachedToHost:(UIView *)host;
++ (BOOL)attachToMarkedHost:(NSString *)identifier clearStyle:(BOOL)clearStyle
+ allowBackgroundOverride:(BOOL)allowBackgroundOverride;
++ (void)detachFromMarkedHost:(NSString *)identifier;
 @end
 NS_ASSUME_NONNULL_END
