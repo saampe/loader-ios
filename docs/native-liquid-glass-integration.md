@@ -112,9 +112,8 @@ added Liquid Glass.
 
 A more discriminating simulator test uses an explicit `UIGlassEffect` behind a
 transparent native tab bar, with colored patterns in the content and a
-same-transparency control. The native tab bar appearance experiment in
-`sources/NativeTabsGlass.x` is intentionally disabled by default pending that
-review. No additional Discord IPA should be built for discovery.
+same-transparency control. The attempted native-tab appearance override did not produce a material difference
+in side-by-side screenshots and was removed from the production loader. No additional Discord IPA should be built for discovery.
 
 
 ### Native tab-bar stacking regression discovered in simulator
@@ -126,7 +125,7 @@ bar. A same-transparency, no-extra-glass screenshot kept icons legible.
 This is a compositor/layer interaction and **rules out blindly placing a
 second Liquid Glass renderer behind an existing UIKit glass tab bar**.
 
-The existing native-tab appearance experiment is left disabled by default.
+The ineffective native-tab appearance experiment has been removed.
 Safer route: target an actual custom React Native navigation surface using a
 view-specific anchor, avoiding native UITabBar's internally managed glass
 hierarchy. Confirm actual material by executing `NativeGlassHost.m` in the
