@@ -6053,6 +6053,43 @@ static void installObjC(Runtime &runtime, Object &objc)
                 [host]() { [NativeGlassHost detachFromHost:host]; },
                 [](Runtime &) -> Value { return Value::undefined(); });
         }));
+    // React Native testID -> UIView.accessibilityIdentifier: attach only when
+    // one uniquely marked, visible, small navigation host is found.
+    objc.setProperty(runtime, "glassAttachById", makeFunction(
+        "glassAttachById", 3, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+            if (count < 1 || !args[0].isString())
+                throw JSError(rt, "glassAttachById requires an unbound.glass.* identifier");
+            NSString *identifier = [JSI toNSString:args[0] runtime:rt];
+            if (![identifier hasPrefix:@"unbound.glass."] || identifier.length > 96)
+                throw JSError(rt, "glassAttachById identifier not permitted");
+            if (count > 1 && !args[1].isBool())
+                throw JSError(rt, "glassAttachById clearStyle must be boolean");
+            if (count > 2 && !args[2].isBool())
+                throw JSError(rt, "glassAttachById allowBackgroundOverride must be boolean");
+            bool clear = count > 1 && args[1].getBool();
+            bool override = count > 2 && args[2].getBool();
+            auto success = std::make_shared<std::atomic<bool>>(false);
+            return executeMainAsynchronously(
+                rt,
+                [identifier, clear, override, success]() {
+                    success->store([NativeGlassHost attachToMarkedHost:identifier
+                                                           clearStyle:clear
+                                              allowBackgroundOverride:override]);
+                },
+                [success](Runtime &) -> Value { return Value(success->load()); });
+        }));
+    objc.setProperty(runtime, "glassDetachById", makeFunction(
+        "glassDetachById", 1, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+            if (count < 1 || !args[0].isString())
+                throw JSError(rt, "glassDetachById requires an unbound.glass.* identifier");
+            NSString *identifier = [JSI toNSString:args[0] runtime:rt];
+            if (![identifier hasPrefix:@"unbound.glass."] || identifier.length > 96)
+                throw JSError(rt, "glassDetachById identifier not permitted");
+            return executeMainAsynchronously(rt,
+                [identifier]() { [NativeGlassHost detachFromMarkedHost:identifier]; },
+                [](Runtime &) -> Value { return Value::undefined(); });
+        }));
+
     objc.setProperty(runtime, "snapshot", makeFunction("snapshot", 2, runtime, snapshotUI));
     objc.setProperty(runtime, "findViews", makeFunction("findViews", 3, runtime, findUIViews));
 
