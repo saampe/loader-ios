@@ -375,6 +375,12 @@ static BOOL                                        observingThemeSettings = NO;
         for (NSString *raw in payload)
         {
             SEL selector = NSSelectorFromString(raw);
+            if (!instance || !class_getInstanceMethod(instance, selector))
+            {
+                [Logger info:LOG_CATEGORY_THEMES
+                      format:@"Skipping unavailable UIKit color selector %@.", raw];
+                continue;
+            }
 
             __block id (*original)(Class, SEL);
             IMP     replacement = imp_implementationWithBlock(^UIColor *(id self) {
