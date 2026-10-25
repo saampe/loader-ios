@@ -33,6 +33,7 @@
 #import "NativeConversionBudget.h"
 #import "NativePluginFFI.h"
 #import "NativeNumericValidation.h"
+#import "NativeGlassHost.h"
 #import "NativeOperationGate.h"
 #import "NativeTypeEncoding.h"
 
@@ -6017,6 +6018,36 @@ static void installObjC(Runtime &runtime, Object &objc)
         }));
 
     objc.setProperty(runtime, "batch", makeFunction("batch", 1, runtime, invokeBatch));
+    // Explicit-anchor native glass integration. All UIKit operations run on the
+    // main queue. We never guess a Discord RN target or alter its theme colors.
+    objc.setProperty(runtime, "glassAttach", makeFunction(
+        "glassAttach", 2, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+            id candidate = count > 0 ? objcValue(rt, args[0]) : nil;
+            if (![candidate isKindOfClass:[UIView class]])
+                throw JSError(rt, "glassAttach requires a native UIView handle");
+            if (count > 1 && !args[1].isBool())
+                throw JSError(rt, "glassAttach clearStyle must be boolean");
+            UIView *host = (UIView *) candidate;
+            bool clearStyle = count > 1 && args[1].getBool();
+            auto success = std::make_shared<std::atomic<bool>>(false);
+            return executeMainAsynchronously(
+                rt,
+                [host, clearStyle, success]() {
+                    success->store([NativeGlassHost attachToTransparentHost:host clearStyle:clearStyle]);
+                },
+                [success](Runtime &) -> Value { return Value(success->load()); });
+        }));
+    objc.setProperty(runtime, "glassDetach", makeFunction(
+        "glassDetach", 1, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+            id candidate = count > 0 ? objcValue(rt, args[0]) : nil;
+            if (![candidate isKindOfClass:[UIView class]])
+                throw JSError(rt, "glassDetach requires a native UIView handle");
+            UIView *host = (UIView *) candidate;
+            return executeMainAsynchronously(
+                rt,
+                [host]() { [NativeGlassHost detachFromHost:host]; },
+                [](Runtime &) -> Value { return Value::undefined(); });
+        }));
     objc.setProperty(runtime, "snapshot", makeFunction("snapshot", 2, runtime, snapshotUI));
     objc.setProperty(runtime, "findViews", makeFunction("findViews", 3, runtime, findUIViews));
 
