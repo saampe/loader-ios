@@ -576,6 +576,11 @@ static const CGFloat kDevOverlayButtonMargin = 8;
                                              handler:^(__unused UIAlertAction *action) {
                                                  [self presentSettingsEditor];
                                              }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Share Theme Diagnostics"
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(__unused UIAlertAction *action) {
+                                                 [self shareThemeDiagnostics];
+                                             }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"Open Unbound Toolbox"
                                                style:UIAlertActionStyleDefault
                                              handler:^(__unused UIAlertAction *action) {
@@ -594,6 +599,35 @@ static const CGFloat kDevOverlayButtonMargin = 8;
         return;
 
     [presenter presentViewController:menu animated:YES completion:nil];
+}
+
++ (void)shareThemeDiagnostics
+{
+    // The report excludes account data and tokens and is regenerated at export.
+    [Themes writeDiagnosticReport];
+    NSString *path = [FileSystem.documents stringByAppendingPathComponent:@"theme-diagnostics.json"];
+    NSURL *fileURL = [NSURL fileURLWithPath:path];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenter = [Utilities topViewController];
+        if (!presenter || ![[NSFileManager defaultManager] fileExistsAtPath:path])
+        {
+            [Logger error:LOG_CATEGORY_THEMES format:@"Theme diagnostic file unavailable for sharing."];
+            return;
+        }
+        UIActivityViewController *share =
+            [[UIActivityViewController alloc] initWithActivityItems:@[ fileURL ]
+                                              applicationActivities:nil];
+        UIPopoverPresentationController *popover = share.popoverPresentationController;
+        if (popover)
+        {
+            popover.sourceView = presenter.view;
+            popover.sourceRect = CGRectMake(CGRectGetMidX(presenter.view.bounds),
+                                            CGRectGetMidY(presenter.view.bounds), 1, 1);
+            popover.permittedArrowDirections = 0;
+        }
+        [presenter presentViewController:share animated:YES completion:nil];
+    });
 }
 
 + (NSUInteger)indexOfClosestPreset:(NSArray<NSNumber *> *)presets toValue:(float)value
