@@ -60,6 +60,71 @@ static BOOL                                        customThemeActive = NO;
     return [themes copy] ?: @[];
 }
 
++ (void)writeDiagnosticReport
+{
+    // Diagnostics contain only theme IDs, color selector names and booleans.
+    // Never include account tokens, user settings or bundle source.
+    NSString *selected = [Settings getString:@"themes" key:@"applied" def:nil];
+    NSDictionary *theme = selected.length > 0 ? [Themes getThemeById:selected] : nil;
+    NSDictionary *semantic = theme[@"bundle"][@"semantic"];
+    NSDictionary *raw = theme[@"bundle"][@"raw"];
+    Class themeClass = NSClassFromString(@"DCDThemeColor");
+    Class themeMeta = themeClass ? object_getClass(themeClass) : Nil;
+    Class uiMeta = object_getClass([UIColor class]);
+    unsigned int methodCount = 0;
+    Method *methods = themeMeta ? class_copyMethodList(themeMeta, &methodCount) : NULL;
+    NSMutableArray *matches = [NSMutableArray array];
+    NSMutableArray *missingRaw = [NSMutableArray array];
+
+    for (unsigned int i = 0; i < methodCount; i++)
+    {
+        NSString *name = NSStringFromSelector(method_getName(methods[i]));
+        if (semantic[name])
+        {
+            [matches addObject:name];
+        }
+    }
+    free(methods);
+
+    for (NSString *name in raw)
+    {
+        if (!class_getInstanceMethod(uiMeta, NSSelectorFromString(name)))
+        {
+            [missingRaw addObject:name];
+        }
+    }
+
+    NSDictionary *report = @{
+        @"schema": @1,
+        @"selectedTheme": selected ?: [NSNull null],
+        @"nativeCurrentTheme": currentThemeId ?: [NSNull null],
+        @"themeFound": @(theme != nil),
+        @"loadedThemeCount": @(themes.count),
+        @"recoveryMode": @([Settings getBoolean:@"unbound" key:@"recovery" def:NO]),
+        @"semanticHooksAttempted": @(semanticColorsSwizzled),
+        @"themeColorClassExists": @(themeClass != Nil),
+        @"themeColorClassMethodCount": @(methodCount),
+        @"configuredSemanticColors": @(semantic.count),
+        @"matchingSemanticSelectors": matches,
+        @"configuredRawColors": @(raw.count),
+        @"unavailableRawSelectors": missingRaw,
+    };
+    NSError *error = nil;
+    NSData *json = [NSJSONSerialization dataWithJSONObject:report
+                                                   options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys
+                                                     error:&error];
+    if (json)
+    {
+        NSString *path = [FileSystem.documents stringByAppendingPathComponent:@"theme-diagnostics.json"];
+        [FileSystem writeFile:path contents:json];
+        [Logger info:LOG_CATEGORY_THEMES format:@"Wrote theme diagnostic report to %@", path];
+    }
+    else
+    {
+        [Logger error:LOG_CATEGORY_THEMES format:@"Could not serialize theme diagnostic: %@", error];
+    }
+}
+
 + (void)applyTheme:(NSString *)manifestId
 {
     [Utilities runOnMainThread:^{ [Themes applyThemeOnMainThread:manifestId]; }];
@@ -246,6 +311,8 @@ static BOOL                                        customThemeActive = NO;
     {
         [Themes setTheme:applied];
     }
+
+    [Themes writeDiagnosticReport];
 };
 
 + (void)swizzleRawColors:(NSDictionary *)payload
