@@ -64,6 +64,16 @@ jobs:
           xcrun simctl io "$UDID" screenshot proof/native-glass-baseline.png
           test -s proof/native-glass-simulator.png
           test -s proof/native-glass-baseline.png
+          xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --tabs
+          sleep 3
+          xcrun simctl io "$UDID" screenshot proof/native-tabs-liquid-glass.png
+          xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --tabs --tabs-baseline
+          sleep 3
+          xcrun simctl io "$UDID" screenshot proof/native-tabs-opaque-baseline.png
+          test -s proof/native-tabs-liquid-glass.png
+          test -s proof/native-tabs-opaque-baseline.png
       - name: Analyze actual screenshot differences
         shell: bash
         run: |
@@ -95,5 +105,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-glass-simulator-proof
-          path: proof/native-glass-simulator.png
+          path: proof/
           if-no-files-found: error
