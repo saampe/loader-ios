@@ -39,7 +39,8 @@ static char kNativeGlassOriginalOpaque;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes)
     {
         if (![scene isKindOfClass:[UIWindowScene class]] ||
-            scene.activationState != UISceneActivationStateForegroundActive)
+            (scene.activationState != UISceneActivationStateForegroundActive &&
+             scene.activationState != UISceneActivationStateForegroundInactive))
             continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows)
         {
@@ -65,6 +66,7 @@ static char kNativeGlassOriginalOpaque;
             if (scanned >= 4096) return nil;
         }
     }
+    if (!matched) NSLog(@"[NativeGlassHost] No marked host for %@", identifier);
     return matched;
 }
 
