@@ -15,6 +15,16 @@ final class GlassDemo: UIResponder, UIApplicationDelegate {
     }
 }
 
+final class DeferredGlassView: UIVisualEffectView {
+    var pendingGlass: UIGlassEffect?
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if window != nil, let pendingGlass, effect !== pendingGlass {
+            effect = pendingGlass
+        }
+    }
+}
+
 final class GlassDemoViewController: UIViewController {
     private let background = UIView()
     private let colorful = CAGradientLayer()
@@ -65,7 +75,8 @@ final class GlassDemoViewController: UIViewController {
             dark.heightAnchor.constraint(equalToConstant: 120)
         ])
         guard !ProcessInfo.processInfo.arguments.contains("--baseline") else { return }
-        let effect = UIVisualEffectView(effect: UIGlassEffect(style: .clear))
+        let effect = DeferredGlassView(effect: nil)
+        effect.pendingGlass = UIGlassEffect(style: .clear)
         effect.frame = CGRect(x: 45, y: 20, width: 240, height: 70)
         let text = UILabel(frame: effect.bounds)
         text.text = "Clear on a dark surface"
@@ -81,7 +92,8 @@ final class GlassDemoViewController: UIViewController {
     }
 
     private func addGlass(_ style: UIGlassEffect.Style, label: String, y: CGFloat) {
-        let effect = UIVisualEffectView(effect: UIGlassEffect(style: style))
+        let effect = DeferredGlassView(effect: nil)
+        effect.pendingGlass = UIGlassEffect(style: style)
         effect.frame = CGRect(x: 45, y: y, width: 240, height: 70)
         let text = UILabel(frame: effect.bounds)
         text.text = label
