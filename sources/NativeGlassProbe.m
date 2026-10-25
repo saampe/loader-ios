@@ -42,7 +42,17 @@ static UIView *glassProbeContainer = nil;
             return NO;
         }
 
-        id effect = [[glassClass alloc] init];
+        // Apple's designated Objective-C factory provides an explicit clear glass style.
+        // Clear is intentionally used for the proof: regular glass adapts very dark
+        // against Discord's titanium/Onyx surfaces, making it look opaque.
+        SEL makeGlass = NSSelectorFromString(@"effectWithStyle:");
+        if (![glassClass respondsToSelector:makeGlass])
+        {
+            NSLog(@"[NativeGlassProbe] UIGlassEffect factory unavailable");
+            return NO;
+        }
+        id (*effectFactory)(id, SEL, NSInteger) = (id (*)(id, SEL, NSInteger))[glassClass methodForSelector:makeGlass];
+        id effect = effectFactory(glassClass, makeGlass, 1); // UIGlassEffectStyleClear
         if (![effect isKindOfClass:[UIVisualEffect class]])
         {
             NSLog(@"[NativeGlassProbe] Could not construct UIGlassEffect");
@@ -67,7 +77,8 @@ static UIView *glassProbeContainer = nil;
         glass.userInteractionEnabled = NO;
         glass.layer.cornerRadius = 25.0;
         glass.layer.cornerCurve = kCACornerCurveContinuous;
-        glass.clipsToBounds = YES;
+        // Avoid clipping the effect renderer, as UIKit manages its own glass mask.
+        glass.clipsToBounds = NO;
         [container addSubview:glass];
 
         UILabel *label = [[UILabel alloc] initWithFrame:container.bounds];
@@ -78,7 +89,7 @@ static UIView *glassProbeContainer = nil;
         label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
         label.textAlignment = NSTextAlignmentCenter;
         label.userInteractionEnabled = NO;
-        [container addSubview:label];
+        [glass.contentView addSubview:label];
 
         [host addSubview:container];
         glassProbeHost = host;
