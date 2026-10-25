@@ -19,3 +19,17 @@ int UnboundSimulatorIsGlassAttached(void *hostPointer)
 {
     return [NativeGlassHost isAttachedToHost:(__bridge UIView *)hostPointer];
 }
+
+int UnboundSimulatorAttachMarkedGlass(const char *identifier)
+{
+    NSString *name = identifier ? [NSString stringWithUTF8String:identifier] : nil;
+    return [NativeGlassHost attachToMarkedHost:name
+                                   clearStyle:NO
+                      allowBackgroundOverride:YES] ? 1 : 0;
+}
+
+void UnboundSimulatorDetachMarkedGlass(const char *identifier)
+{
+    NSString *name = identifier ? [NSString stringWithUTF8String:identifier] : nil;
+    [NativeGlassHost detachFromMarkedHost:name];
+}
