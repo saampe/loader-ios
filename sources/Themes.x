@@ -65,8 +65,10 @@ static BOOL                                        observingThemeSettings = NO;
 {
     // Diagnostics contain only theme IDs, color selector names and booleans.
     // Never include account tokens, user settings or bundle source.
-    NSString *selected = [Settings getString:@"themes" key:@"applied" def:nil];
-    NSDictionary *theme = selected.length > 0 ? [Themes getThemeById:selected] : nil;
+    id savedSelection = [Settings getString:@"themes" key:@"applied" def:nil];
+    NSString *selected = [savedSelection isKindOfClass:[NSString class]] && [savedSelection length] > 0
+                             ? savedSelection : nil;
+    NSDictionary *theme = selected ? [Themes getThemeById:selected] : nil;
     NSDictionary *semantic = theme[@"bundle"][@"semantic"];
     NSDictionary *raw = theme[@"bundle"][@"raw"];
     Class themeClass = NSClassFromString(@"DCDThemeColor");
