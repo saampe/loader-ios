@@ -155,3 +155,46 @@ Still unverified: ownership and stacking of Discord's *actual* navigation
 host. A UIKit `UITabBar` must not receive a redundant sibling glass layer,
 as shown by the earlier icon-blurring regression. Do not request a new Discord
 IPA until a reliable React Native host anchor is obtained.
+
+
+## Exact Discord floating YouBar component identified (Hermes decompilation)
+
+The full Discord 350 Hermes bytecode was disassembled offline, then its
+per-component functions were extracted; no Discord IPA was built or installed.
+
+**Definitive source module:** `modules/main_tabs_v2/native/you_bar/YouBarBackground.tsx`.
+
+Exported default: `React.memo(YouBarBackground)`. Its runtime bytecode,
+functions 74806 and 74807, directly calls `Theme.useToken` for two colors:
+- `MOBILE_FLOATINGBAR_BACKGROUND`
+- `MOBILE_FLOATINGBAR_BACKGROUND_NAMEPLATE` (conditionally used when
+  `hasNameplate` is true)
+
+It constructs **`YouBarAnimatedBackground`** (large avatar) or
+**`YouBarMaskedBackground`** (regular avatar), passing
+`{ barWidth, backgroundColor, avatarSize? }`.
+
+Confirmed related source modules:
+- `.../you_bar/YouBar.tsx`, default `React.memo(YouBarThemed)`;
+- `.../you_bar/YouBarButton.tsx`, default
+  `React.memo(YouBarButton)`;
+- `.../you_bar/YouBarFloatingShade.tsx`, default
+  `React.memo(YouBarFloatingShade)`.
+
+These are far more precise targets than an RNSTabBarController. The
+floating background is a special masked/animated React Native composition,
+so replacing an arbitrary parent with a glass view may cover the buttons or
+break its shape. Safest plan is to use a **single-semantic-view anchor** and
+target only these two floating bar colors, leaving Titanium Blue untouched.
+`NativeGlassHost.attachToMarkedHost` is implemented for explicit React Native
+`testID` -> `accessibilityIdentifier` targeting and rejects duplicate
+markers and unrelated classes.
+
+Hermes evidence: `saampe/Unbound-iOS` Actions run 40237892981,
+artifact `discord-navigation-hermes-references`, and the matching
+`YouBarBackground_Compiled.hasm` / `YouBarBackground_Fallback.hasm`.
+
+**Remaining risk:** locating the actual final native `UIView` that owns the
+masked floating bar background and proving it can be made transparent without
+harming its animation. A successful bytecode static analysis is not a runtime
+viewport assertion.
