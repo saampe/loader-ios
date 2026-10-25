@@ -51,7 +51,38 @@ jobs:
           sleep 3
           mkdir -p proof
           xcrun simctl io "$UDID" screenshot proof/native-glass-simulator.png
+          xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
+          xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --baseline
+          sleep 3
+          xcrun simctl io "$UDID" screenshot proof/native-glass-baseline.png
           test -s proof/native-glass-simulator.png
+          test -s proof/native-glass-baseline.png
+      - name: Analyze actual screenshot differences
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --break-system-packages Pillow
+          python3 - <<'PY'
+          from PIL import Image, ImageChops, ImageFilter, ImageStat
+          from pathlib import Path
+          import json
+          a = Image.open("proof/native-glass-simulator.png").convert("RGB")
+          b = Image.open("proof/native-glass-baseline.png").convert("RGB")
+          assert a.size == b.size, (a.size, b.size)
+          # Blurring reduces differences caused solely by text, not glass material.
+          delta = ImageChops.difference(a.filter(ImageFilter.GaussianBlur(12)), b.filter(ImageFilter.GaussianBlur(12)))
+          stats = ImageStat.Stat(delta)
+          max_diff = max(delta.getextrema()[i][1] for i in range(3))
+          report = {
+            "dimensions": list(a.size),
+            "mean_blurred_rgb_difference": [round(x, 3) for x in stats.mean],
+            "max_blurred_channel_difference": max_diff,
+            "difference_bbox": delta.getbbox(),
+            "note": "A nonzero difference confirms rendering changed, not that Liquid Glass looks correct. Inspect screenshots visually."
+          }
+          Path("proof/visual-difference.json").write_text(json.dumps(report, indent=2))
+          print(json.dumps(report, indent=2))
+          PY
           echo "Simulator screenshot captured. Screenshot visual inspection is still required."
       - name: Upload simulator screenshot (not a Discord IPA)
         uses: actions/upload-artifact@v4
