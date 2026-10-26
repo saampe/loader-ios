@@ -1,5 +1,6 @@
 #import "DevOverlay.h"
 #import "NativeGlassHost.h"
+#import "Unbound.h"
 
 @interface NativeGlassProbe : NSObject
 + (BOOL)isVisible;
