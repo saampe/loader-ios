@@ -1,4 +1,5 @@
 #import "DevOverlay.h"
+#import "NativeGlassHost.h"
 
 @interface NativeGlassProbe : NSObject
 + (BOOL)isVisible;
@@ -589,6 +590,11 @@ static const CGFloat kDevOverlayButtonMargin = 8;
                                                  UIWindow *window = discordKeyWindow ?: [self activeKeyWindow];
                                                  [NativeGlassProbe toggleForWindow:window];
                                              }]];
+    [menu addAction:[UIAlertAction actionWithTitle:@"Share Native Glass Diagnostics"
+                                               style:UIAlertActionStyleDefault
+                                             handler:^(__unused UIAlertAction *action) {
+                                                 [self shareNativeGlassDiagnostics];
+                                             }]];
     [menu addAction:[UIAlertAction actionWithTitle:@"Share Theme Diagnostics"
                                                style:UIAlertActionStyleDefault
                                              handler:^(__unused UIAlertAction *action) {
@@ -612,6 +618,66 @@ static const CGFloat kDevOverlayButtonMargin = 8;
         return;
 
     [presenter presentViewController:menu animated:YES completion:nil];
+}
+
++ (void)shareNativeGlassDiagnostics
+{
+    // Gather current Hermes state before opening a sheet. Privacy allowlist:
+    // glass/plugin booleans, module state and native-view geometry ONLY.
+    ExportNativeGlassDiagnostics(^(NSString *runtimeJSON) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSData *runtimeData = [runtimeJSON dataUsingEncoding:NSUTF8StringEncoding];
+            NSError *error = nil;
+            id parsed = runtimeData
+                ? [NSJSONSerialization JSONObjectWithData:runtimeData options:0 error:&error]
+                : nil;
+            NSDictionary *runtimeReport = [parsed isKindOfClass:NSDictionary.class]
+                ? parsed : @{ @"reason": @"INVALID_RUNTIME_REPORT" };
+            NSDictionary *nativeReport =
+                [NativeGlassHost diagnosticsForMarkedHost:@"unbound.glass.youbar.background"];
+
+            NSDictionary *report = @{
+                @"schema": @1,
+                @"source": @"Unbound native glass diagnostics",
+                @"runtime": runtimeReport,
+                @"nativeYouBarHost": nativeReport ?: @{}
+            };
+            NSError *jsonError = nil;
+            NSData *data = [NSJSONSerialization dataWithJSONObject:report
+                                                          options:NSJSONWritingPrettyPrinted
+                                                            error:&jsonError];
+            if (!data || jsonError)
+            {
+                [Logger error:LOG_CATEGORY_DEFAULT
+                      format:@"Native Glass diagnostic JSON could not be produced."];
+                return;
+            }
+
+            NSString *path = [FileSystem.documents
+                stringByAppendingPathComponent:@"native-glass-diagnostics.json"];
+            [FileSystem writeFile:path contents:data];
+            UIViewController *presenter = [Utilities topViewController];
+            if (!presenter || ![[NSFileManager defaultManager] fileExistsAtPath:path])
+            {
+                [Logger error:LOG_CATEGORY_DEFAULT
+                      format:@"Native Glass diagnostic JSON could not be shared."];
+                return;
+            }
+            UIActivityViewController *share =
+                [[UIActivityViewController alloc]
+                    initWithActivityItems:@[[NSURL fileURLWithPath:path]]
+                    applicationActivities:nil];
+            UIPopoverPresentationController *popover = share.popoverPresentationController;
+            if (popover)
+            {
+                popover.sourceView = presenter.view;
+                popover.sourceRect = CGRectMake(CGRectGetMidX(presenter.view.bounds),
+                                                CGRectGetMidY(presenter.view.bounds), 1, 1);
+                popover.permittedArrowDirections = 0;
+            }
+            [presenter presentViewController:share animated:YES completion:nil];
+        });
+    });
 }
 
 + (void)shareThemeDiagnostics
