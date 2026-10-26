@@ -198,3 +198,41 @@ artifact `discord-navigation-hermes-references`, and the matching
 masked floating bar background and proving it can be made transparent without
 harming its animation. A successful bytecode static analysis is not a runtime
 viewport assertion.
+
+## 2026-10-26: YouBar native bridge and lifecycle fixes (next IPA candidate)
+
+The user's installed Discord diagnostic reported `loader.unbound=false`,
+`loader.bridge=false`, and no `glassAttachById`, even though the bundled
+YouBar plugin and Hermes module were present. This establishes a missing
+`NativePlugin` global *in that earlier IPA*, not a failed UIKit shader.
+
+Current integrated loader:
+- After successful Unbound JS bundle evaluation, `sources/Unbound.xm` verifies
+  the native glass API and re-registers it in the same Hermes runtime if absent.
+  It records `__unboundGlassNativeStartup` in the shared diagnostic.
+- The bundled `embedded/native-liquid-glass-youbar.js` captures the native
+  ObjC host functions at startup and can keep using them if Unbound resets the
+  global `NativePlugin` while Metro dependencies load asynchronously.
+- Out-of-order native attachment results after unmount now trigger guarded
+  cleanup. Stale mounts cannot detach material belonging to a newer marker.
+- The external `saampe/discord-themes/native-liquid-glass-youbar/index.js`
+  matches the bundled plugin byte-for-byte, with tests covering both late
+  attachment and bridge-global disappearance.
+- JS verification passed in `saampe/discord-themes` Actions runs
+  `40355715084` and `40356097953`. The former confirms late-attach cleanup;
+  the latter confirms bridge retention.
+- Integrated loader code revision: `6f466692e8217ccccf1803972c4f36f7d21459b3`.
+- The private build workflow in `saampe/Unbound-iOS` is pinned to this exact
+  integrated revision, but **no new Discord IPA was created** while preparing
+  these changes. The normal `main` workflow-file change does not trigger a
+  Discord IPA build.
+
+Release gates: require `Verify Native Theme Code` to compile the integrated
+loader and stage the byte-identical plugin; the last check was queued at the
+time of this note. After that, the next meaningful verification requires a
+single test IPA on the user's real device. Use the in-app
+`Share Native Glass Diagnostics` report; check `nativeStartup` and
+`pluginStatus` separately from `bridgePresent`. An effective material
+requires the correct small YouBar anchor, actual UIKit attachment, and a
+non-opaque content layer. A simulator or green JS test cannot prove that
+Discord's animated/masked YouBar geometry renders correctly on device.
