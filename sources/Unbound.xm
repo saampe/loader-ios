@@ -295,6 +295,30 @@ static void executeBundle(id instance,
             }
             [Logger info:LOG_CATEGORY_DEFAULT
                   format:@"Unbound's bundle was successfully executed."];
+            // The actual iPhone diagnostic showed NativePlugin missing here,
+            // despite having registered it in injectPreBundle. Unbound's JS
+            // initialization may replace the global. Repair the bridge in
+            // the same Hermes runtime before native glass plugin startup.
+            {
+                bool glassBridgeReady = false;
+                jsi::Value nativeBridge = runtime.global().getProperty(runtime, "NativePlugin");
+                if (nativeBridge.isObject())
+                {
+                    jsi::Value objcBridge = nativeBridge.asObject(runtime).getProperty(runtime, "objc");
+                    if (objcBridge.isObject())
+                    {
+                        jsi::Value attach = objcBridge.asObject(runtime).getProperty(runtime, "glassAttachById");
+                        glassBridgeReady = attach.isObject() &&
+                                           attach.asObject(runtime).isFunction(runtime);
+                    }
+                }
+                if (!glassBridgeReady)
+                {
+                    [Logger info:LOG_CATEGORY_DEFAULT
+                          format:@"NativePlugin bridge was missing after Unbound startup; restoring in current Hermes runtime."];
+                    loader::registerNativePluginBridge(runtime);
+                }
+            }
             // Bundled in the signed IPA: no separate plugin installation.
             // The React component stays opaque until real UIKit material is attached.
             if ([Settings getBoolean:@"unbound" key:@"ui.nativeGlassYoubar" def:YES])
