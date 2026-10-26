@@ -233,15 +233,17 @@ static char kNativeGlassOriginalOpaque;
         UIColor *background = host.backgroundColor;
         BOOL isOpaque = host.opaque || (background && CGColorGetAlpha(background.CGColor) > 0.01);
         if (isOpaque && !allowBackgroundOverride) return NO;
-        // Never modify an entire UIWindow or screen-sized React root when a
-        // plugin requests a transparent navigation *surface*.
-        if (isOpaque && allowBackgroundOverride)
+        // Never place glass into a root/screen-sized RN host, even if React
+        // already marked the host transparent. The earlier guard protected
+        // opaque hosts only and could miss incorrectly sized clear hosts.
+        if (allowBackgroundOverride)
         {
             CGRect area = [host convertRect:host.bounds toView:host.window];
             if ([host isKindOfClass:[UIWindow class]] ||
-                area.size.height > MIN(240.0, host.window.bounds.size.height * 0.36) ||
+                CGRectIsNull(area) || CGRectIsInfinite(area) ||
                 area.size.width < 72.0 ||
-                CGRectIsNull(area) || CGRectIsInfinite(area))
+                area.size.width > host.window.bounds.size.width * 1.10 ||
+                area.size.height > MIN(240.0, host.window.bounds.size.height * 0.36))
                 return NO;
         }
 
