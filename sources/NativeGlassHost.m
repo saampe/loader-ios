@@ -75,6 +75,99 @@ static char kNativeGlassOriginalOpaque;
     return matched;
 }
 
+// Diagnostics for the installed Discord hierarchy. Only view geometry,
+// component-class names and material state are returned; never view contents.
++ (NSDictionary<NSString *, id> *)diagnosticsForMarkedHost:(NSString *)identifier
+{
+    if (![NSThread isMainThread])
+        return @{ @"reason": @"NOT_MAIN_THREAD" };
+    if (![identifier hasPrefix:@"unbound.glass."] || identifier.length > 96)
+        return @{ @"reason": @"INVALID_IDENTIFIER" };
+
+    UIView *matched = nil;
+    NSUInteger matches = 0;
+    NSUInteger inspected = 0;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes)
+    {
+        if (![scene isKindOfClass:UIWindowScene.class] ||
+            (scene.activationState != UISceneActivationStateForegroundActive &&
+             scene.activationState != UISceneActivationStateForegroundInactive))
+            continue;
+
+        for (UIWindow *window in ((UIWindowScene *)scene).windows)
+        {
+            if (window.hidden || window.alpha < 0.01 ||
+                window.windowLevel != UIWindowLevelNormal || !window.rootViewController.view)
+                continue;
+
+            NSMutableArray<UIView *> *queue =
+                [NSMutableArray arrayWithObject:window.rootViewController.view];
+            for (NSUInteger index = 0; index < queue.count && index < 16384; index++)
+            {
+                UIView *view = queue[index];
+                inspected++;
+                if ([view.accessibilityIdentifier isEqualToString:identifier])
+                {
+                    matches++;
+                    matched = view;
+                }
+                for (UIView *child in view.subviews)
+                {
+                    if (queue.count >= 16384) break;
+                    [queue addObject:child];
+                }
+            }
+            // Never report a unique marker from a partial scan.
+            if (queue.count >= 16384)
+                return @{ @"reason": @"SCAN_LIMIT",
+                          @"inspectedViews": @(inspected),
+                          @"matches": @(matches) };
+        }
+    }
+
+    if (matches != 1 || !matched)
+        return @{ @"reason": matches == 0 ? @"ANCHOR_NOT_FOUND" : @"AMBIGUOUS_ANCHOR",
+                  @"matches": @(matches), @"inspectedViews": @(inspected) };
+
+    UIVisualEffectView *glass =
+        objc_getAssociatedObject(matched, &kNativeGlassHostAssociation);
+    CGFloat width = CGRectGetWidth(matched.bounds);
+    CGFloat height = CGRectGetHeight(matched.bounds);
+    UIColor *background = matched.backgroundColor;
+    BOOL opaque = matched.opaque ||
+        (background && CGColorGetAlpha(background.CGColor) > 0.01);
+
+    // Flag directly covering opaque RN layers; this is an indication, not a
+    // guarantee, that the compositor obscures the underlying glass.
+    NSUInteger coveringOpaqueChildren = 0;
+    for (UIView *child in matched.subviews)
+    {
+        if (child == glass || child.hidden || child.alpha < 0.01)
+            continue;
+        CGRect overlap = CGRectIntersection(child.frame, matched.bounds);
+        CGFloat overlapArea = CGRectIsNull(overlap) ? 0 :
+            CGRectGetWidth(overlap) * CGRectGetHeight(overlap);
+        UIColor *childBackground = child.backgroundColor;
+        BOOL childOpaque = child.opaque ||
+            (childBackground && CGColorGetAlpha(childBackground.CGColor) > 0.98);
+        if (childOpaque && width * height > 0 &&
+            overlapArea >= 0.75 * width * height)
+            coveringOpaqueChildren++;
+    }
+
+    return @{ @"reason": @"ANCHOR_FOUND",
+              @"matches": @(matches),
+              @"inspectedViews": @(inspected),
+              @"viewClass": NSStringFromClass(matched.class) ?: @"unknown",
+              @"width": @(width),
+              @"height": @(height),
+              @"inWindow": @(matched.window != nil),
+              @"hostOpaque": @(opaque),
+              @"materialAttached": @(glass != nil && glass.superview == matched),
+              @"effectActive": @(glass.effect != nil),
+              @"coveringOpaqueChildren": @(coveringOpaqueChildren) };
+}
+
 + (BOOL)attachToMarkedHost:(NSString *)identifier clearStyle:(BOOL)clearStyle
  allowBackgroundOverride:(BOOL)allowBackgroundOverride
 {
