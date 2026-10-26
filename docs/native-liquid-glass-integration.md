@@ -201,7 +201,7 @@ viewport assertion.
 
 ## 2026-10-26: YouBar native bridge and lifecycle fixes (next IPA candidate)
 
-The user's installed Discord diagnostic reported `loader.unbound=false`,
+The user's installed Discord diagnostic reported `loader.unbound=true`,
 `loader.bridge=false`, and no `glassAttachById`, even though the bundled
 YouBar plugin and Hermes module were present. This establishes a missing
 `NativePlugin` global *in that earlier IPA*, not a failed UIKit shader.
