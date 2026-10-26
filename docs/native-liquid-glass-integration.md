@@ -236,3 +236,28 @@ single test IPA on the user's real device. Use the in-app
 requires the correct small YouBar anchor, actual UIKit attachment, and a
 non-opaque content layer. A simulator or green JS test cannot prove that
 Discord's animated/masked YouBar geometry renders correctly on device.
+
+## External plugin override policy (2026-10-26)
+
+Native Unbound loads validated external plugin manifests before starting its
+built-in glass JS. If a valid installed plugin has manifest ID
+`native-liquid-glass-youbar`, the built-in copy does **not** start.
+The external plugin is therefore the single owner of YouBar patching. If it
+fails, the original opaque Discord YouBar is preserved instead of having an
+uncontrolled second glass plugin attempt to take over.
+
+This selection is made at loader startup. After adding, removing or replacing
+the external plugin, **restart Discord** so Unbound re-scans installed plugins.
+An installed-but-disabled external plugin can still suppress the bundled
+version; removing that plugin folder restores bundled behavior after restart
+when `ui.nativeGlassYoubar` remains enabled. A user can disable the built-in
+path using the existing `ui.nativeGlassYoubar` setting. No future IPA
+rebuild is needed for compatible JavaScript-only plugin changes. Changes to
+compiled UIKit/JSI exports still require recompilation.
+
+Plugin source: `saampe/discord-themes/native-liquid-glass-youbar/`.
+Integrated loader: `saampe/loader-ios` at
+`b2d56da17b07d68a2f36e0596ef5e61d2c9718e8`.
+The private IPA workflow is pinned to this same source. This source update
+does not build an IPA, and the new native integration has not yet been
+device-validated.
