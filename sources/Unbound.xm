@@ -96,34 +96,34 @@ void ExportNativeGlassDiagnostics(void (^completion)(NSString *json))
     id instance = gInstance;
     if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
     {
-        completion(@"{\\"reason\\":\\"NO_HERMES_RUNTIME\\"}");
+        completion(@"{\"reason\":\"NO_HERMES_RUNTIME\"}");
         return;
     }
     void (^callback)(NSString *) = [completion copy];
     [instance callFunctionOnBufferedRuntimeExecutor:[callback](jsi::Runtime &runtime) {
         NSString *script =
             @"(()=>{const b=globalThis.NativePlugin;const o=b?.objc;"
-             "const s=globalThis.__unboundGlassRuntimeStatus;"
-             "const n=globalThis.__unboundGlassNativeStartup;"
-             "const safe=s&&typeof s==='object'?{"
-             "phase:String(s.phase??'unknown').slice(0,80),"
-             "code:String(s.code??'').slice(0,120),"
-             "patchInstalled:!!s.patchInstalled,renderObserved:!!s.renderObserved,"
-             "attachAttempts:Number(s.attachAttempts)||0,attached:!!s.attached,"
-             "inspection:s.inspection&&typeof s.inspection==='object'?s.inspection:null}:null;"
-             "return JSON.stringify({timestamp:new Date().toISOString(),"
-             "bridgePresent:!!b,bridgeAttach:typeof o?.glassAttachById==='function',"
-             "bridgeInspect:typeof o?.glassInspectById==='function',"
-             "builtInPluginPresent:!!globalThis.__unboundBuiltInGlass,"
-             "nativeStartup:n&&typeof n==='object'?{preBundleBridge:!!n.preBundleBridge,"
-             "restoredAfterBundle:!!n.restoredAfterBundle,"
-             "availableAfterBundle:!!n.availableAfterBundle}:null,"
-             "pluginStatus:safe});})()";
+            @"const s=globalThis.__unboundGlassRuntimeStatus;"
+            @"const n=globalThis.__unboundGlassNativeStartup;"
+            @"const safe=s&&typeof s==='object'?{"
+            @"phase:String(s.phase??'unknown').slice(0,80),"
+            @"code:String(s.code??'').slice(0,120),"
+            @"patchInstalled:!!s.patchInstalled,renderObserved:!!s.renderObserved,"
+            @"attachAttempts:Number(s.attachAttempts)||0,attached:!!s.attached,"
+            @"inspection:s.inspection&&typeof s.inspection==='object'?s.inspection:null}:null;"
+            @"return JSON.stringify({timestamp:new Date().toISOString(),"
+            @"bridgePresent:!!b,bridgeAttach:typeof o?.glassAttachById==='function',"
+            @"bridgeInspect:typeof o?.glassInspectById==='function',"
+            @"builtInPluginPresent:!!globalThis.__unboundBuiltInGlass,"
+            @"nativeStartup:n&&typeof n==='object'?{preBundleBridge:!!n.preBundleBridge,"
+            @"restoredAfterBundle:!!n.restoredAfterBundle,"
+            @"availableAfterBundle:!!n.availableAfterBundle}:null,"
+            @"pluginStatus:safe});})()";
         jsi::Value result =
             [JSI evaluateSource:script tag:@"unbound:glass-diagnostic-export" runtime:runtime];
         NSString *json = result.isString()
             ? [JSI toNSString:result runtime:runtime]
-            : @"{\\"reason\\":\\"HERMES_DIAGNOSTIC_UNAVAILABLE\\"}";
+            : @"{\"reason\":\"HERMES_DIAGNOSTIC_UNAVAILABLE\"}";
         callback(json);
     }];
 }
