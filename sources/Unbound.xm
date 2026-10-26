@@ -341,6 +341,7 @@ static void executeBundle(id instance,
             // the same Hermes runtime before native glass plugin startup.
             {
                 bool glassBridgeReady = false;
+                bool restoredAfterBundle = false;
                 jsi::Value nativeBridge = runtime.global().getProperty(runtime, "NativePlugin");
                 if (nativeBridge.isObject())
                 {
@@ -357,7 +358,29 @@ static void executeBundle(id instance,
                     [Logger info:LOG_CATEGORY_DEFAULT
                           format:@"NativePlugin bridge was missing after Unbound startup; restoring in current Hermes runtime."];
                     loader::registerNativePluginBridge(runtime);
+                    restoredAfterBundle = true;
                 }
+                bool availableAfterBundle = false;
+                jsi::Value restoredBridge = runtime.global().getProperty(runtime, "NativePlugin");
+                if (restoredBridge.isObject())
+                {
+                    jsi::Value objcBridge = restoredBridge.asObject(runtime).getProperty(runtime, "objc");
+                    if (objcBridge.isObject())
+                    {
+                        jsi::Value attach = objcBridge.asObject(runtime).getProperty(runtime, "glassAttachById");
+                        availableAfterBundle = attach.isObject() &&
+                                               attach.asObject(runtime).isFunction(runtime);
+                    }
+                }
+                jsi::Object nativeStartup(runtime);
+                nativeStartup.setProperty(runtime, "preBundleBridge", jsi::Value(true));
+                nativeStartup.setProperty(runtime, "restoredAfterBundle", jsi::Value(restoredAfterBundle));
+                nativeStartup.setProperty(runtime, "availableAfterBundle", jsi::Value(availableAfterBundle));
+                runtime.global().setProperty(runtime, "__unboundGlassNativeStartup",
+                                             std::move(nativeStartup));
+                if (!availableAfterBundle)
+                    [Logger error:LOG_CATEGORY_DEFAULT
+                          format:@"NativePlugin glass bridge absent even after same-runtime registration."];
             }
             // Bundled in the signed IPA: no separate plugin installation.
             // The React component stays opaque until real UIKit material is attached.
