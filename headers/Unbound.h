@@ -18,6 +18,8 @@
 extern "C" {
 #endif
 void CompleteBrowserLogin(NSString *token);
+// Returns only native-glass activation flags, never Discord/account content.
+void ExportNativeGlassDiagnostics(void (^completion)(NSString *json));
 #ifdef __cplusplus
 }
 #endif
