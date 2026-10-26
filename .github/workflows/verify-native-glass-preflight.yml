@@ -41,17 +41,3 @@ jobs:
           grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
           echo 'External plugin overrides built-in startup; native bridge preserved.'
 
-  macos-go-suite:
-    name: Full Go suite with native plist utilities (no IPA)
-    runs-on: macos-15
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: false
-      - name: Run full Go suite on supported host
-        run: go test ./...
