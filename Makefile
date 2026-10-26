@@ -31,6 +31,9 @@ $(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation AuthenticationServices UniformTypeId
 BUNDLE_NAME = UnboundResources
 $(BUNDLE_NAME)_INSTALL_PATH = "/Library/Application\ Support/"
 $(BUNDLE_NAME)_RESOURCE_DIRS = "resources"
+# Ship the real UIKit YouBar integration in the IPA; do not depend on manual
+# plugin import or availability of a separate theme repository at runtime.
+$(BUNDLE_NAME)_BUNDLE_RESOURCES = embedded/native-liquid-glass-youbar.js
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 include $(THEOS_MAKE_PATH)/bundle.mk
