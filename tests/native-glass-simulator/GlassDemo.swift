@@ -2,6 +2,8 @@ import UIKit
 
 @_silgen_name("UnboundSimulatorAttachMarkedGlass")
 private func attachMarkedGlass(_ identifier: UnsafePointer<CChar>) -> Int32
+@_silgen_name("UnboundSimulatorInspectMarkedGlass")
+private func inspectMarkedGlass(_ identifier: UnsafePointer<CChar>) -> Int32
 @_silgen_name("UnboundSimulatorDetachMarkedGlass")
 private func detachMarkedGlass(_ identifier: UnsafePointer<CChar>)
 @_silgen_name("UnboundSimulatorAttachGlass")
@@ -320,10 +322,11 @@ final class ActualHostProofController: UIViewController {
         let pointer = Unmanaged.passUnretained(target).toOpaque()
         let attached = "unbound.glass.youbar.background".withCString { attachMarkedGlass($0) != 0 }
         let confirmed = isActualGlassAttached(pointer) != 0
-        status.text = attached && confirmed ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
+        let inspected = "unbound.glass.youbar.background".withCString { inspectMarkedGlass($0) != 0 }
+        status.text = attached && confirmed && inspected ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
         // Fail test if a native material cannot be attached to a *known* view.
         NSLog("[GlassHostSimulator] exact marker attach=%d confirmed=%d window=%@ scene=%@", attached ? 1 : 0, confirmed ? 1 : 0, String(describing: target.window), String(describing: target.window?.windowScene))
-        let state = attached && confirmed ? "PASS" : "FAIL"
+        let state = attached && confirmed && inspected ? "PASS" : "FAIL"
         if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             try? state.write(to: documents.appendingPathComponent("native-glass-marker-result.txt"),
                              atomically: true, encoding: .utf8)
