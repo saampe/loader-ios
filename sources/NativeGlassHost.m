@@ -7,15 +7,36 @@
 // Attaching to an opaque host is intentionally rejected: it would conceal the
 // material behind its own background and falsely suggest that glass was enabled.
 @interface UnboundGlassMaterialView : UIVisualEffectView
-@property (nonatomic, strong) UIVisualEffect *deferredEffect;
+@property (nonatomic, assign) BOOL glassClearStyle;
 @end
 
 @implementation UnboundGlassMaterialView
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    if (self.window && self.deferredEffect && self.effect != self.deferredEffect)
-        self.effect = self.deferredEffect;
+    if (!self.window || self.effect) return;
+
+    // UIKit can silently skip a glass effect if it was created before its
+    // view became renderable. Create and install it only during layout in the
+    // visible window hierarchy (also used by Expo's iOS glass implementation).
+    CGFloat effectiveAlpha = 1.0;
+    for (UIView *v = self; v; v = v.superview)
+    {
+        if (v.hidden) return;
+        effectiveAlpha *= v.alpha;
+        if (effectiveAlpha <= 0.02) return;
+    }
+    Class glassClass = NSClassFromString(@"UIGlassEffect");
+    SEL factory = NSSelectorFromString(@"effectWithStyle:");
+    if (![glassClass respondsToSelector:factory]) return;
+    id (*makeEffect)(id, SEL, NSInteger) =
+        (id (*)(id, SEL, NSInteger))[glassClass methodForSelector:factory];
+    id effect = makeEffect(glassClass, factory, self.glassClearStyle ? 1 : 0);
+    if (![effect isKindOfClass:UIVisualEffect.class]) return;
+
+    // A neutral effect forces UIKit to clear any stale visual-effect state.
+    self.effect = [[UIVisualEffect alloc] init];
+    self.effect = (UIVisualEffect *)effect;
 }
 @end
 
@@ -302,16 +323,10 @@ static char kNativeGlassOriginalOpaque;
                 return NO;
         }
 
-        Class glassClass = NSClassFromString(@"UIGlassEffect");
-        SEL factory = NSSelectorFromString(@"effectWithStyle:");
-        if (![glassClass respondsToSelector:factory]) return NO;
-        id (*makeEffect)(id, SEL, NSInteger) =
-            (id (*)(id, SEL, NSInteger))[glassClass methodForSelector:factory];
-        id effect = makeEffect(glassClass, factory, clearStyle ? 1 : 0);
-        if (![effect isKindOfClass:UIVisualEffect.class]) return NO;
-
+        // Do NOT create UIGlassEffect here: this host may not have completed
+        // its first in-window layout. The actual effect is created there.
         UnboundGlassMaterialView *glass = [[UnboundGlassMaterialView alloc] initWithEffect:nil];
-        glass.deferredEffect = (UIVisualEffect *)effect;
+        glass.glassClearStyle = clearStyle;
         glass.translatesAutoresizingMaskIntoConstraints = YES;
         glass.frame = host.bounds;
         glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
