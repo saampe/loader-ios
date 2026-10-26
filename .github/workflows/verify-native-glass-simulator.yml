@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'tests/native-glass-simulator/**'
+      - 'sources/NativeGlassHost.m'
+      - 'headers/NativeGlassHost.h'
       - '.github/workflows/verify-native-glass-simulator.yml'
   workflow_dispatch:
 
