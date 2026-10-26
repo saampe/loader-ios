@@ -12,5 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (BOOL)attachToMarkedHost:(NSString *)identifier clearStyle:(BOOL)clearStyle
  allowBackgroundOverride:(BOOL)allowBackgroundOverride;
 + (void)detachFromMarkedHost:(NSString *)identifier;
+// Privacy-preserving bounded status report: geometry and UIKit glass only.
+// Must be invoked on the main thread; never inspects messages or labels.
++ (NSDictionary<NSString *, id> *)diagnosticsForMarkedHost:(NSString *)identifier;
 @end
 NS_ASSUME_NONNULL_END
