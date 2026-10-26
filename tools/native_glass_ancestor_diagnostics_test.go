@@ -21,8 +21,20 @@ func TestNativeGlassCompositingDiagnosticContract(t *testing.T) {
     `@"layerOpacity": @(node.layer.opacity)`,
     `@"nativeGlassHasMask": @(glass.layer.mask != nil)`,
   }
+  checks = append(checks,
+    "if (!self.window || self.effect) return;",
+    "effectiveAlpha <= 0.02",
+    "self.glassClearStyle ? 1 : 0",
+    "self.effect = (UIVisualEffect *)effect;",
+    "glass.glassClearStyle = clearStyle",
+  )
   for _, value := range checks {
-    if !strings.Contains(src, value) { t.Errorf("missing diagnostic: %s", value) }
+    if !strings.Contains(src, value) { t.Errorf("missing glass safety or diagnostic contract: %s", value) }
+  }
+  // The pre-layout attach path must not construct the effect. This prevents
+  // recurrence of the attached-but-black on-device state.
+  if strings.Contains(src, "deferredEffect") {
+    t.Error("Do not preconstruct a UIGlassEffect before in-window layout")
   }
   if strings.Contains(src, `@"accessibilityLabel"`) || strings.Contains(src, `@"textContent"`) {
     t.Fatal("view diagnostics must not export user-generated UI content")
