@@ -306,12 +306,8 @@ static void executeBundle(id instance,
                 if (glassSource.length)
                 {
                     NSString *startup = [NSString stringWithFormat:
-                        @"(()=>{try{globalThis.__unboundBuiltInGlass?.stop?.();"
-                         "const plugin=(%@);"
-                         "globalThis.__unboundBuiltInGlass=plugin;"
-                         "plugin?.start?.();"
-                         "}catch(error){console.warn('[Native Liquid Glass] Startup failed:',String(error));}})()",
-                         glassSource];
+                        @"(()=>{try{globalThis.__unboundBuiltInGlass?.stop?.();const plugin=(%@);globalThis.__unboundBuiltInGlass=plugin;plugin?.start?.();}catch(error){console.warn('[Native Liquid Glass] Startup failed:',String(error));}})()",
+                        glassSource];
                     if (![JSI evaluate:[startup dataUsingEncoding:NSUTF8StringEncoding]
                                   tag:@"unbound:native-liquid-glass-youbar" runtime:runtime])
                         [Logger error:LOG_CATEGORY_DEFAULT format:@"Bundled native Liquid Glass JS failed."];
