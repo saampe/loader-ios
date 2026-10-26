@@ -33,3 +33,13 @@ void UnboundSimulatorDetachMarkedGlass(const char *identifier)
     NSString *name = identifier ? [NSString stringWithUTF8String:identifier] : nil;
     [NativeGlassHost detachFromMarkedHost:name];
 }
+
+int UnboundSimulatorInspectMarkedGlass(const char *identifier)
+{
+    NSString *name = identifier ? [NSString stringWithUTF8String:identifier] : nil;
+    NSDictionary *result = [NativeGlassHost diagnosticsForMarkedHost:name];
+    return [result[@"reason"] isEqualToString:@"ANCHOR_FOUND"] &&
+           [result[@"materialAttached"] boolValue] &&
+           [result[@"effectActive"] boolValue] &&
+           [result[@"inspectedViews"] unsignedIntegerValue] > 4096;
+}
