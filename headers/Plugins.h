@@ -7,6 +7,7 @@
 }
 
 + (NSString *)makeJSON;
++ (BOOL)hasInstalledPluginWithId:(NSString *)identifier;
 + (void)init;
 
 @end
