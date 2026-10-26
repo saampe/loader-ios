@@ -8,6 +8,22 @@ static NSMutableArray *plugins = nil;
     return [Utilities JSONStringFromObject:plugins options:0 fallback:@"[]"];
 };
 
+// Compare validated plugin manifests, not arbitrary folders or JS strings.
+// Called after Plugins.init has loaded each valid manifest and entry file.
++ (BOOL)hasInstalledPluginWithId:(NSString *)identifier
+{
+    if (!identifier.length || !plugins) return NO;
+    for (NSDictionary *entry in plugins)
+    {
+        NSDictionary *manifest = entry[@"manifest"];
+        if ([manifest isKindOfClass:[NSDictionary class]] &&
+            [manifest[@"id"] isKindOfClass:[NSString class]] &&
+            [manifest[@"id"] isEqualToString:identifier])
+            return YES;
+    }
+    return NO;
+}
+
 + (void)init
 {
     plugins = [[NSMutableArray alloc] init];
