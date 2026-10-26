@@ -277,6 +277,16 @@ final class ActualHostProofController: UIViewController {
             ])
         }
 
+        // Regression fixture: Discord's Fabric view tree can contain more
+        // than 4096 nodes before its floating profile background appears.
+        // All marker candidates must still be inspected without guessing
+        // screen geometry. These empty nodes are non-interactive and zero-size.
+        for _ in 0..<4200 {
+            let placeholder = UIView(frame: .zero)
+            placeholder.isUserInteractionEnabled = false
+            view.addSubview(placeholder)
+        }
+
         target.translatesAutoresizingMaskIntoConstraints = false
         target.backgroundColor = UIColor(red: 0.11, green: 0.14, blue: 0.20, alpha: 1)
         target.isOpaque = true
