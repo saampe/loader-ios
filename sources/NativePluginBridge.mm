@@ -6078,6 +6078,29 @@ static void installObjC(Runtime &runtime, Object &objc)
                 },
                 [success](Runtime &) -> Value { return Value(success->load()); });
         }));
+    // Privacy-safe read-only status for exact YouBar anchor: no labels, chats,
+    // message IDs, or screen pixels. Used only by diagnostic tooling.
+    objc.setProperty(runtime, "glassInspectById", makeFunction(
+        "glassInspectById", 1, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
+            if (count < 1 || !args[0].isString())
+                throw JSError(rt, "glassInspectById requires a namespaced identifier");
+            NSString *identifier = [JSI toNSString:args[0] runtime:rt];
+            if (![identifier hasPrefix:@"unbound.glass."] || identifier.length > 96)
+                throw JSError(rt, "glassInspectById identifier not permitted");
+            auto resultJSON = std::make_shared<std::string>("{}");
+            return executeMainAsynchronously(
+                rt,
+                [identifier, resultJSON]() {
+                    NSDictionary *status = [NativeGlassHost diagnosticsForMarkedHost:identifier];
+                    NSData *data = [NSJSONSerialization dataWithJSONObject:status ?: @{}
+                                                                   options:0 error:nil];
+                    if (data.length)
+                        *resultJSON = std::string((const char *)data.bytes, data.length);
+                },
+                [resultJSON](Runtime &completionRuntime) -> Value {
+                    return String::createFromUtf8(completionRuntime, *resultJSON);
+                });
+        }));
     objc.setProperty(runtime, "glassDetachById", makeFunction(
         "glassDetachById", 1, runtime, [](Runtime &rt, const Value &, const Value *args, size_t count) -> Value {
             if (count < 1 || !args[0].isString())
