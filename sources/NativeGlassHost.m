@@ -155,6 +155,51 @@ static char kNativeGlassOriginalOpaque;
             coveringOpaqueChildren++;
     }
 
+    // Black-glass investigation: inspect only geometry/compositing metadata.
+    // A child-free host can still sit inside an opaque parent or a masked
+    // hierarchy. Do not collect accessibility labels, text or view contents.
+    NSMutableArray<NSDictionary *> *ancestors = [NSMutableArray array];
+    UIView *node = matched;
+    for (NSUInteger depth = 0; node && depth < 9; depth++, node = node.superview)
+    {
+        UIColor *bg = node.backgroundColor;
+        CGFloat bgAlpha = bg ? CGColorGetAlpha(bg.CGColor) : 0.0;
+        CGRect screenFrame = node.window
+            ? [node convertRect:node.bounds toView:node.window]
+            : CGRectNull;
+        NSMutableDictionary *record = [@{
+            @"depth": @(depth),
+            @"class": NSStringFromClass(node.class) ?: @"unknown",
+            @"opacity": @(node.alpha),
+            @"opaque": @(node.opaque),
+            @"backgroundAlpha": @(bgAlpha),
+            @"hidden": @(node.hidden),
+            @"clipsToBounds": @(node.clipsToBounds),
+            @"layerMaskPresent": @(node.layer.mask != nil),
+            @"layerMasksToBounds": @(node.layer.masksToBounds),
+            @"layerOpacity": @(node.layer.opacity),
+            @"shouldRasterize": @(node.layer.shouldRasterize),
+            @"siblingCount": @(node.superview ? node.superview.subviews.count : 0),
+            @"zIndex": @(node.superview
+                ? [node.superview.subviews indexOfObjectIdenticalTo:node] : 0)
+        } mutableCopy];
+        if (!CGRectIsNull(screenFrame) && !CGRectIsInfinite(screenFrame))
+        {
+            record[@"screenX"] = @(CGRectGetMinX(screenFrame));
+            record[@"screenY"] = @(CGRectGetMinY(screenFrame));
+            record[@"screenWidth"] = @(CGRectGetWidth(screenFrame));
+            record[@"screenHeight"] = @(CGRectGetHeight(screenFrame));
+        }
+        [ancestors addObject:record];
+    }
+    BOOL nativeGlassIsFrontmost = (glass && glass.superview == matched &&
+        matched.subviews.lastObject == glass);
+    BOOL nativeGlassIsBackmost = (glass && glass.superview == matched &&
+        matched.subviews.firstObject == glass);
+    CGFloat effectiveAncestorAlpha = 1.0;
+    for (UIView *ancestor = matched; ancestor; ancestor = ancestor.superview)
+        effectiveAncestorAlpha *= ancestor.alpha * ancestor.layer.opacity;
+
     return @{ @"reason": @"ANCHOR_FOUND",
               @"matches": @(matches),
               @"inspectedViews": @(inspected),
@@ -165,7 +210,17 @@ static char kNativeGlassOriginalOpaque;
               @"hostOpaque": @(opaque),
               @"materialAttached": @(glass != nil && glass.superview == matched),
               @"effectActive": @(glass.effect != nil),
-              @"coveringOpaqueChildren": @(coveringOpaqueChildren) };
+              @"coveringOpaqueChildren": @(coveringOpaqueChildren),
+              @"ancestorCompositing": ancestors,
+              @"effectiveAncestorAlpha": @(effectiveAncestorAlpha),
+              @"nativeGlassIsFrontmost": @(nativeGlassIsFrontmost),
+              @"nativeGlassIsBackmost": @(nativeGlassIsBackmost),
+              @"nativeGlassHidden": @(glass.hidden),
+              @"nativeGlassAlpha": @(glass.alpha),
+              @"nativeGlassLayerOpacity": @(glass.layer.opacity),
+              @"nativeGlassClipsToBounds": @(glass.clipsToBounds),
+              @"nativeGlassHasMask": @(glass.layer.mask != nil),
+              @"nativeGlassViewClass": glass ? NSStringFromClass(glass.class) : @"missing" };
 }
 
 + (BOOL)attachToMarkedHost:(NSString *)identifier clearStyle:(BOOL)clearStyle
