@@ -58,6 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -m pip install --quiet --break-system-packages Pillow
           UDID="$(xcrun simctl list devices available | grep -m1 -E 'iPhone .*\([A-F0-9-]{36}\)' | sed -E 's/.*\(([A-F0-9-]{36})\).*/\1/')"
           test -n "$UDID"
           xcrun simctl boot "$UDID"
@@ -89,8 +90,28 @@ jobs:
           xcrun simctl io "$UDID" screenshot proof/actual-objc-host-glass.png
           xcrun simctl terminate "$UDID" dev.unbound.nativeglassproof
           xcrun simctl launch "$UDID" dev.unbound.nativeglassproof --actual-host --actual-host-baseline
-          sleep 3
-          xcrun simctl io "$UDID" screenshot proof/actual-objc-host-baseline.png
+          # A previous green simulator run captured a white splash screen as
+          # the baseline. Re-check the actual colored fixture before accepting.
+          BASELINE_READY=0
+          for attempt in $(seq 1 14); do
+            sleep 2
+            xcrun simctl io "$UDID" screenshot proof/actual-objc-host-baseline.png
+            if python3 - <<'PY'
+          from PIL import Image
+          im=Image.open("proof/actual-objc-host-baseline.png").convert("RGB")
+          w,h=im.size
+          samples=[im.getpixel((int(w*0.08),int(h*f))) for f in (0.59,0.73,0.86)]
+          # A loaded fixture has distinct vivid horizontal color bands; an
+          # unrendered SpringBoard/splash frame is near-white at all samples.
+          assert all(max(rgb)-min(rgb)>25 for rgb in samples), samples
+          PY
+            then
+              BASELINE_READY=1
+              break
+            fi
+            echo "Actual host baseline not rendered, retry $attempt"
+          done
+          test "$BASELINE_READY" = 1
           test -s proof/actual-objc-host-glass.png
           test -s proof/actual-objc-host-baseline.png
           DATA="$(xcrun simctl get_app_container "$UDID" dev.unbound.nativeglassproof data)"
@@ -107,6 +128,16 @@ jobs:
           from PIL import Image, ImageChops, ImageFilter, ImageStat
           from pathlib import Path
           import json
+          # Require comparable rendered app frames, not blank white launches.
+          host_glass = Image.open("proof/actual-objc-host-glass.png").convert("RGB")
+          host_base = Image.open("proof/actual-objc-host-baseline.png").convert("RGB")
+          assert host_glass.size == host_base.size
+          w,h = host_glass.size
+          for frac in (0.59,0.73,0.86):
+              x,y = int(w*0.08),int(h*frac)
+              g,b = host_glass.getpixel((x,y)),host_base.getpixel((x,y))
+              assert max(b)-min(b)>25, ("blank baseline",y,b)
+              assert max(abs(i-j) for i,j in zip(g,b))<40, ("mismatched fixture",y,g,b)
           a = Image.open("proof/native-glass-simulator.png").convert("RGB")
           b = Image.open("proof/native-glass-baseline.png").convert("RGB")
           assert a.size == b.size, (a.size, b.size)
