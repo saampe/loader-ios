@@ -35,7 +35,6 @@ static char kNativeGlassOriginalOpaque;
         return nil;
 
     UIView *matched = nil;
-    NSUInteger scanned = 0;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes)
     {
         if (![scene isKindOfClass:[UIWindowScene class]] ||
@@ -49,7 +48,13 @@ static char kNativeGlassOriginalOpaque;
                 continue;
 
             NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:window.rootViewController.view];
-            for (NSUInteger index = 0; index < queue.count && scanned < 4096; index++, scanned++)
+            // Discord screens can have thousands of Fabric nodes. A global
+            // 4096-node budget across all windows can omit a valid YouBar
+            // marker purely because an unrelated view appeared earlier.
+            // Bound each visible app window independently, and refuse if
+            // the entire hierarchy cannot be inspected for duplicate IDs.
+            NSUInteger windowScanned = 0;
+            for (NSUInteger index = 0; index < queue.count && windowScanned < 16384; index++, windowScanned++)
             {
                 UIView *view = queue[index];
                 if ([view.accessibilityIdentifier isEqualToString:identifier])
@@ -59,11 +64,11 @@ static char kNativeGlassOriginalOpaque;
                 }
                 for (UIView *child in view.subviews)
                 {
-                    if (queue.count >= 4096) break;
+                    if (queue.count >= 16384) break;
                     [queue addObject:child];
                 }
             }
-            if (scanned >= 4096) return nil;
+            if (windowScanned >= 16384 || queue.count >= 16384) return nil;
         }
     }
     if (!matched) NSLog(@"[NativeGlassHost] No marked host for %@", identifier);
@@ -173,6 +178,25 @@ static char kNativeGlassOriginalOpaque;
             host.backgroundColor = UIColor.clearColor;
         }
         [host insertSubview:glass atIndex:0];
+        // The deferred UIGlassEffect must be committed while its UIKit
+        // view is attached to a window. A layout pass is not guaranteed to
+        // happen after an already-laid-out RN host receives this child.
+        [glass setNeedsLayout];
+        [glass layoutIfNeeded];
+        if (!glass.effect)
+        {
+            [glass removeFromSuperview];
+            if (isOpaque && allowBackgroundOverride)
+            {
+                id originalColor = objc_getAssociatedObject(host, &kNativeGlassOriginalBackground);
+                host.backgroundColor = originalColor == [NSNull null] ? nil : originalColor;
+                NSNumber *oldOpaque = objc_getAssociatedObject(host, &kNativeGlassOriginalOpaque);
+                host.opaque = oldOpaque.boolValue;
+                objc_setAssociatedObject(host, &kNativeGlassOriginalBackground, nil, OBJC_ASSOCIATION_ASSIGN);
+                objc_setAssociatedObject(host, &kNativeGlassOriginalOpaque, nil, OBJC_ASSOCIATION_ASSIGN);
+            }
+            return NO;
+        }
 
         objc_setAssociatedObject(host, &kNativeGlassHostAssociation, glass, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return YES;
