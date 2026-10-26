@@ -1,0 +1,40 @@
+name: Native Liquid Glass Preflight
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sources/Plugins.m'
+      - 'headers/Plugins.h'
+      - 'sources/Unbound.xm'
+      - 'embedded/native-liquid-glass-youbar.js'
+      - 'tools/native_glass_override_contract_test.go'
+      - '.github/workflows/verify-native-glass-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Verify plugin override and static contracts (no IPA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Run unit and code-contract tests
+        run: go test ./...
+      - name: Validate embedded native glass JavaScript syntax
+        run: node --check embedded/native-liquid-glass-youbar.js
+      - name: Assert one active YouBar glass provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"]' sources/Unbound.xm
+          grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
+          echo 'External valid plugin overrides built-in startup; native bridge preserved.'
