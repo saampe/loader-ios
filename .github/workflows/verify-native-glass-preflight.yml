@@ -28,9 +28,9 @@ jobs:
           go-version-file: go.mod
           cache: false
       - name: Run native glass override contract test
-        # Full Go suite uses macOS PlistBuddy; run platform-independent
-        # contract validation here while the iOS SDK runner is queued.
-        run: go test ./... -run '^TestNativeGlassExternalPluginOverrideContract
+        # The full suite depends on macOS PlistBuddy. Validate portable
+        # glass/plugin contracts here while the macOS SDK runner is queued.
+        run: go test ./... -run '^TestNativeGlassExternalPluginOverrideContract$' -count=1
       - name: Validate embedded native glass JavaScript syntax
         run: node --check embedded/native-liquid-glass-youbar.js
       - name: Assert one active YouBar glass provider
@@ -39,17 +39,7 @@ jobs:
           set -euo pipefail
           grep -Fq '![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"]' sources/Unbound.xm
           grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
-          echo 'External valid plugin overrides built-in startup; native bridge preserved.'
- -count=1
-      - name: Validate embedded native glass JavaScript syntax
-        run: node --check embedded/native-liquid-glass-youbar.js
-      - name: Assert one active YouBar glass provider
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -Fq '![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"]' sources/Unbound.xm
-          grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
-          echo 'External valid plugin overrides built-in startup; native bridge preserved.'
+          echo 'External plugin overrides built-in startup; native bridge preserved.'
 
   macos-go-suite:
     name: Full Go suite with native plist utilities (no IPA)
