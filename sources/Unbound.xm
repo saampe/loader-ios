@@ -384,7 +384,8 @@ static void executeBundle(id instance,
             }
             // Bundled in the signed IPA: no separate plugin installation.
             // The React component stays opaque until real UIKit material is attached.
-            if ([Settings getBoolean:@"unbound" key:@"ui.nativeGlassYoubar" def:YES])
+            if ([Settings getBoolean:@"unbound" key:@"ui.nativeGlassYoubar" def:YES] &&
+                ![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"])
             {
                 NSData *glassData = [Utilities getResource:@"native-liquid-glass-youbar" data:YES ext:@"js"];
                 NSString *glassSource = glassData.length
