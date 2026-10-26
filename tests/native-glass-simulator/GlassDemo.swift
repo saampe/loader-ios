@@ -323,10 +323,20 @@ final class ActualHostProofController: UIViewController {
         let attached = "unbound.glass.youbar.background".withCString { attachMarkedGlass($0) != 0 }
         let confirmed = isActualGlassAttached(pointer) != 0
         let inspected = "unbound.glass.youbar.background".withCString { inspectMarkedGlass($0) != 0 }
-        status.text = attached && confirmed && inspected ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
+        // Safety regression: a transparent full-screen RN root must be
+        // rejected, even though it has no opaque background to override.
+        let transparentRoot = UIView(frame: view.bounds)
+        transparentRoot.backgroundColor = .clear
+        transparentRoot.isOpaque = false
+        view.addSubview(transparentRoot)
+        let rootPointer = Unmanaged.passUnretained(transparentRoot).toOpaque()
+        let rejectedRoot = attachActualGlass(rootPointer, 0, 1) == 0
+        transparentRoot.removeFromSuperview()
+        status.text = attached && confirmed && inspected && rejectedRoot
+            ? "Actual ObjC UIGlassEffect" : "GLASS HOST FAILED"
         // Fail test if a native material cannot be attached to a *known* view.
         NSLog("[GlassHostSimulator] exact marker attach=%d confirmed=%d window=%@ scene=%@", attached ? 1 : 0, confirmed ? 1 : 0, String(describing: target.window), String(describing: target.window?.windowScene))
-        let state = attached && confirmed && inspected ? "PASS" : "FAIL"
+        let state = attached && confirmed && inspected && rejectedRoot ? "PASS" : "FAIL"
         if let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
             try? state.write(to: documents.appendingPathComponent("native-glass-marker-result.txt"),
                              atomically: true, encoding: .utf8)
