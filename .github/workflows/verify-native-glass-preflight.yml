@@ -27,8 +27,10 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - name: Run unit and code-contract tests
-        run: go test ./...
+      - name: Run native glass override contract test
+        # Full Go suite uses macOS PlistBuddy; run platform-independent
+        # contract validation here while the iOS SDK runner is queued.
+        run: go test ./... -run '^TestNativeGlassExternalPluginOverrideContract
       - name: Validate embedded native glass JavaScript syntax
         run: node --check embedded/native-liquid-glass-youbar.js
       - name: Assert one active YouBar glass provider
@@ -38,3 +40,28 @@ jobs:
           grep -Fq '![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"]' sources/Unbound.xm
           grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
           echo 'External valid plugin overrides built-in startup; native bridge preserved.'
+ -count=1
+      - name: Validate embedded native glass JavaScript syntax
+        run: node --check embedded/native-liquid-glass-youbar.js
+      - name: Assert one active YouBar glass provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '![Plugins hasInstalledPluginWithId:@"native-liquid-glass-youbar"]' sources/Unbound.xm
+          grep -Fq 'if (!identifier.length || !plugins) return NO;' sources/Plugins.m
+          echo 'External valid plugin overrides built-in startup; native bridge preserved.'
+
+  macos-go-suite:
+    name: Full Go suite with native plist utilities (no IPA)
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Run full Go suite on supported host
+        run: go test ./...
