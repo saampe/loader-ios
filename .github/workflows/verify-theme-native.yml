@@ -8,6 +8,9 @@ on:
       - 'sources/NativeGlassProbe.m'
       - 'sources/NativeGlassHost.m'
       - 'sources/NativePluginBridge.mm'
+      - 'sources/Unbound.xm'
+      - 'Makefile'
+      - 'embedded/native-liquid-glass-youbar.js'
       - 'headers/NativeGlassHost.h'
       - 'headers/Themes.h'
       - '.github/workflows/verify-theme-native.yml'
@@ -41,5 +44,15 @@ jobs:
           echo "$(brew --prefix autoconf)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix automake)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix libtool)/bin" >> "$GITHUB_PATH"
+      - name: Verify embedded Liquid Glass JavaScript
+        run: |
+          node --check embedded/native-liquid-glass-youbar.js
       - name: Compile native tweak (debug disables release attestation)
         run: make DEBUG=1 package
+      - name: Confirm tested glass plugin is actually packaged in tweak bundle
+        run: |
+          set -euo pipefail
+          found="$(find .theos -type f -name native-liquid-glass-youbar.js -print -quit)"
+          test -n "$found"
+          cmp embedded/native-liquid-glass-youbar.js "$found"
+          echo "Embedded and packaged JS are byte-identical: $found"
